@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.26)
 project(ffmpeg_work)
 
+
 set(ffmpeg_root "C:/msys64/home/ZZM/ffmpeg-5.0.3/build")
 set(opencv_root "C:/msys64/home/ZZM/opencv-4.8.0/build")
 #set(CMAKE_C_STANDARD 11)

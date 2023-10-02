@@ -144,7 +144,11 @@ int Decoder::decode_high2low() {
             dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
             //如果是视频帧 需要判断丢帧
             if(stream_index == 0){
-                if(count >= 1.0f) count -= 1.0f;
+                if(count >= 1.0f) {
+                    while(count >= 1.0f){
+                        count -= 1.0f;
+                    }
+                }
                 else{
                     count += frameratio;
                     {
@@ -253,17 +257,19 @@ int Decoder::decode_low2high() {
             }
             av_frame_free(&dec_frame);
         } else {
-            count -= 1.0f;
-            {
-                std::unique_lock<std::mutex> lock(mtx);
-                while(video_queue.size() >= video_queue_cache){
-                    cond.wait(lock);
+            while(count >= 1.0f) {
+                count -= 1.0f;
+                {
+                    std::unique_lock<std::mutex> lock(mtx);
+                    while (video_queue.size() >= video_queue_cache) {
+                        cond.wait(lock);
+                    }
                 }
-            }
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                video_queue.push_back(av_frame_clone(prev_frame));
-                if(count < 1.0f) av_frame_free(&prev_frame);
+                {
+                    std::lock_guard<std::mutex> lock(mtx);
+                    video_queue.push_back(av_frame_clone(prev_frame));
+                    if (count < 1.0f) av_frame_free(&prev_frame);
+                }
             }
         }
     }

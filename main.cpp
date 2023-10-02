@@ -11,8 +11,8 @@ int main() {
     std::string file3 = "C://Users//ZZM//Desktop//素材//wy.mp4";
 
 
-    std::string output_file0 = "rtmp://localhost:1935/live/livestream";
-    //std::string output_file0 = "output.mp4";
+    //std::string output_file0 = "rtmp://localhost:1935/live/livestream";
+    std::string output_file0 = "output.mp4";
 
     std::vector<std::string> input_files;
     std::vector<std::string> output_files;
