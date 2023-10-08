@@ -24,7 +24,15 @@ public:
                int height = 1080,
                int framerate = 30,
                int samplerate = 44100);
+
+    Transcoder(std::vector<std::string>& output_filenames, int width = 1920, int height = 1080, int framerate = 20, int samplerate = 44100);
+
+
     ~Transcoder();
+
+
+    int init_local_device_transcoder();
+
 
     //初始化转码
     int init_transcoder();
@@ -64,6 +72,48 @@ public:
     int encode_thread_audio_rtmp(std::vector<int>& works, double& count_video, double& count_audio);
 
 
+    int encode_thread_video_deivce_mp4(int& time);
+
+    int encode_thread_audio_device_mp4(int& time);
+
+
+    int reencode_local_device();
+
+    //录屏
+    int encode_device_mp4();
+
+    //推流
+    int encode_device_rtmp();
+
+    int encode_files_rtmp_test();
+
+
+    int encode_thread_video_rtmp_new(std::vector<int>& works, double& count_video, double& count_audio);
+
+    int encode_thread_audio_rtmp_new(std::vector<int>& works, double& count_video, double& count_audio);
+
+
+
+    //多线程转码推流视频
+    int encode_thread_rtmp();
+
+    //多线程转码为MP4
+    int encode_thread_mp4();
+
+    //完全独立线程编码视频mp4
+    int encode_thread_video_mp4_separate(std::vector<int>& works);
+
+    //完全独立线程编码音频mp4
+    int encode_thread_audio_mp4_separate(std::vector<int>& works);
+
+
+    //完全独立线程编码视频推流，不依赖音频编码计数和时间 一秒内推流指定个数视频帧
+    int encode_thread_video_rtmp_separate(std::vector<int>& works);
+
+    //完全独立线程编码音频推流，不依赖视频编码计数和时间 一秒内推流指定个数音频帧
+    int encode_thread_audio_rtmp_separate(std::vector<int>& works);
+
+
 
 private:
     std::vector<std::string> input_filenames;
@@ -82,26 +132,17 @@ private:
 
     SwrContext *swr_ctx = nullptr;
     AVAudioFifo *fifo = nullptr;
+    IniterD::ptr initerD;
 
 
     std::vector<IniterI::ptr> IniterIs;
+    //std::vector<const std::shared_ptr<Initer>> IniterIs;
     std::vector<IniterO::ptr> IniterOs;
 
     std::vector<Decoder::ptr> decoders;
     std::vector<Encoder::ptr> encoders;
 
 };
-
-
-
-
-
-
-
-
-
-
-
 
 
 

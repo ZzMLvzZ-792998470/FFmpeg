@@ -15,6 +15,8 @@ extern "C"{
 #include <condition_variable>
 #include <memory>
 
+#include "timer.h"
+
 
 class Decoder{
 public:
@@ -49,6 +51,10 @@ public:
     //获得音频解码队列
     std::deque<AVFrame *> get_audio_queue(){ return audio_queue;}
 
+
+    int test_decode();
+
+
     //视频解码队列pop操作
     void pop_video(){
         av_frame_free(&video_queue.front());
@@ -66,10 +72,14 @@ public:
 private:
     AVFormatContext *ifmt_ctx;
 
-    int set_framerate;
-    int real_framerate;
+//    int set_framerate;
+//    int real_framerate;
+
+    double set_framerate;
+    double real_framerate;
 
     int video_queue_cache = 10;
+    int audio_queue_cache = 5;
 
     AVCodecContext *audio_dec_ctx, *video_dec_ctx;
 

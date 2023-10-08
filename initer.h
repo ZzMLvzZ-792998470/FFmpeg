@@ -6,10 +6,14 @@ extern "C"{
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/opt.h>
+#include <libavdevice/avdevice.h>
 }
 
 #include <string>
 #include <memory>
+#include <iostream>
+
+//#include "local_device.h"
 
 
 class Initer{
@@ -35,6 +39,7 @@ class IniterI : Initer{
 public:
     typedef std::shared_ptr<IniterI> ptr;
     IniterI(const std::string& filename);
+
     ~IniterI() override;
 
     //初始化输入文件
@@ -48,6 +53,35 @@ private:
     AVFormatContext *ifmt_ctx = nullptr;
 
 };
+
+
+class IniterD : Initer{
+public:
+    typedef std::shared_ptr<IniterD> ptr;
+    IniterD();
+    ~IniterD() override;
+
+    int init_fmt() override;
+
+//    AVFormatContext *get_vfmt_ctx() ;
+//    AVFormatContext *get_afmt_ctx() ;
+
+    AVFormatContext *get_fmt_ctx() override;
+
+    void show_devices();
+
+    void show_device_info(const std::string& device_name);
+
+
+private:
+    AVFormatContext *fmt_ctx;
+//    AVFormatContext *vfmt_ctx;
+//    AVFormatContext *afmt_ctx;
+
+    const AVInputFormat *audio_input_fmt = nullptr;
+    const AVInputFormat *video_input_fmt = nullptr;
+};
+
 
 
 class IniterO : Initer{

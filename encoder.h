@@ -38,6 +38,9 @@ public:
     //MP4格式编码视频帧
     int encode_video_mp4(AVFrame* frame);
 
+
+    int encode_audio_mp4(AVFrame* frame);
+
     //编码音频帧
     int encode_audio(AVFrame* frame);
 
@@ -59,6 +62,17 @@ public:
     void setVideoEncCtxParam();
 
     void setAudioEncCtxParam();
+
+    int encode_video_rtmp(AVFrame *frame, double& count_video, int64_t& last_time);
+
+    int encode_audio_rtmp(AVFrame* frame, double& count_audio, int64_t& last_time);
+
+    //编码视频帧rtmp(不需要时间和计数)
+    int encode_video_rtmp(AVFrame *frame);
+
+    //编码音频帧rtmp(不需要时间和计数)
+    int encode_audio_rtmp(AVFrame* frame);
+
 
 
 

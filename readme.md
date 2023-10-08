@@ -191,9 +191,20 @@
 ## 音频帧转换问题
 ```angular2html
 
+使用audio_fifo完成重采样
+
 decoder---->deocded_queue(audio)---->frame----->audio_fifo
 
 ----->trans---->new frame---->encode
+
+```
+
+## 捕获摄像头
+```angular2html
+    AVcodecDevice
+
+
+
 
 ```
 

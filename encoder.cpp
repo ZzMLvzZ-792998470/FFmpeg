@@ -47,6 +47,25 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
             enc_ctx->height = height;
             enc_ctx->width = width;
 
+            //硬编参数
+//            enc_ctx->bit_rate = 400000;
+            enc_ctx->max_b_frames = 0;
+            enc_ctx->gop_size = 5;
+//
+//            enc_ctx->bit_rate_tolerance = 100000;
+//            enc_ctx->rc_min_rate = 350000;
+//            enc_ctx->rc_max_rate = 450000;
+//            enc_ctx->rc_buffer_size = (int)enc_ctx->bit_rate;
+//            enc_ctx->rc_initial_buffer_occupancy = enc_ctx->rc_buffer_size * 3 / 4;
+
+            //enc_ctx->global_quality = 24;
+            //enc_ctx->refs = 2;
+
+
+
+
+
+
             //一些可调参数---视频
 //            enc_ctx->bit_rate = 800000;
 //            enc_ctx->bit_rate_tolerance = 800000;
@@ -62,6 +81,17 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
 //            enc_ctx->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
 //            enc_ctx->gop_size = 12;
 //            enc_ctx->bit_rate = 4000000;
+
+//            enc_ctx->bit_rate = 400000;
+//            enc_ctx->gop_size = 60;
+//            enc_ctx->refs = 3;
+//
+//            enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+//            enc_ctx->framerate = AVRational {framerate, 1};
+//            enc_ctx->time_base = av_inv_q(enc_ctx->framerate); // {1, framerate}
+//            video_enc_ctx = enc_ctx;
+
+
 
             /* take first format from list of supported formats */
             //enc_ctx->pix_fmt = dec_ctx->pix_fmt;
@@ -80,9 +110,11 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
 //            "slow": 比 "medium" 慢一些，提供更高的画质。
 //            "slower": 比 "slow" 更慢，进一步提升画质。
 //            "veryslow": 最慢的预设，提供最高质量的编码结果
+            //av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
+             av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
+//            av_opt_set(video_enc_ctx->priv_data, "tune", "zerolatency", 0);
+//            av_opt_set(video_enc_ctx->priv_data, "profile", "main", 0);
 
-
-            av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
             time_per_frame_video = 1.0 * 1000 / framerate;
 
         } else if(enc_ctx->codec_type == AVMEDIA_TYPE_AUDIO){
@@ -99,7 +131,9 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
             enc_ctx->sample_fmt = encoder->sample_fmts[0];
             enc_ctx->time_base = AVRational{1, enc_ctx->sample_rate};
             audio_enc_ctx = enc_ctx;
+
             time_per_frame_audio = 1024 * 1.0 * 1000 / audio_enc_ctx->sample_rate;
+           // time_per_frame_audio = audio_enc_ctx->frame_size * 1.0 / 1000 / audio_enc_ctx->sample_rate;
         }
 
 
@@ -162,7 +196,6 @@ int Encoder::encode(AVFrame *frame, int stream_index, double& count) {
             enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * m_ofmt_ctx->streams[stream_index]->time_base.den / 1000);
             Writer::write_packets(m_ofmt_ctx, enc_pkt);
         }
-
     }else{
         //设置编码数据帧的pts --->{1, 44100} 表示 一个时间单位一帧 正确
         if(encode_frame) encode_frame->pts = audio_pts;
@@ -230,6 +263,10 @@ int Encoder::encode_video(AVFrame *frame, int64_t &last_time) {
         enc_pkt->dts = enc_pkt->pts = current_time_video;
         current_time_video += time_per_frame_video;
 
+        if(enc_pkt->pts == 10050){
+            av_log(nullptr, AV_LOG_INFO, "10050.\n");
+        }
+
         av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
         av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
         av_log(nullptr, AV_LOG_INFO, "video packet.\n");
@@ -295,6 +332,50 @@ int Encoder::encode_video_mp4(AVFrame *frame) {
     return 0;
 }
 
+
+
+
+int Encoder::encode_audio_mp4(AVFrame *frame) {
+    int ret;
+    int stream_index = 1;
+    AVFrame *encode_frame = frame;
+    AVPacket *enc_pkt = av_packet_alloc();
+
+    //设置编码数据帧的pts --->{1, 44100} 表示 一个时间单位一帧 正确
+    if(encode_frame) encode_frame->pts = audio_pts;
+    audio_pts += 1024;
+
+    ret = avcodec_send_frame(audio_enc_ctx, encode_frame);
+    if(ret < 0){
+        av_log(nullptr, AV_LOG_ERROR, "audio_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+
+    av_frame_free(&encode_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(audio_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+
+        enc_pkt->stream_index = stream_index;
+
+        //23.219ms.... --->一帧要多少毫秒
+        enc_pkt->dts = enc_pkt->pts = current_time_audio;
+        current_time_audio += time_per_frame_audio;
+
+
+        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+        av_log(nullptr, AV_LOG_INFO, "audio packet.\n");
+
+        enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * m_ofmt_ctx->streams[stream_index]->time_base.den / 1000);
+
+        Writer::write_packets(m_ofmt_ctx, enc_pkt);
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+}
 
 int Encoder::encode_audio(AVFrame *frame) {
     int ret;
@@ -569,3 +650,214 @@ void Encoder::setAudioEncCtxParam() {
 void Encoder::setVideoEncCtxParam() {
 
 }
+
+
+int Encoder::encode_video_rtmp(AVFrame *frame, double &count_video, int64_t &last_time) {
+    int ret;
+    int stream_index = 0;
+    AVFrame *encode_frame = frame;
+    AVPacket *enc_pkt = av_packet_alloc();
+
+    //设置编码数据帧的pts --->{1, framerate} 表示 一个时间单位一帧 正确
+    if (encode_frame) encode_frame->pts = (int64_t)video_pts;
+    video_pts++;
+
+    ret = avcodec_send_frame(video_enc_ctx, encode_frame);
+    if (ret < 0) {
+        av_log(nullptr, AV_LOG_ERROR, "video_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+
+    av_frame_free(&frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(video_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+        enc_pkt->stream_index = stream_index;
+
+        enc_pkt->dts = enc_pkt->pts = current_time_video;
+        current_time_video += time_per_frame_video;
+        count_video += time_per_frame_video;
+
+//        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+//        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+//        av_log(nullptr, AV_LOG_INFO, "video packet.\n");
+
+        enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * m_ofmt_ctx->streams[stream_index]->time_base.den / 1000);
+
+//        if(last_time != -1) {
+//            int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12500 - (Timer::getCurrentTime() - last_time));
+//            //int64_t sleep_time = (1000 / framerate * 1000) - (Timer::getCurrentTime() - last_time);
+//            if(sleep_time > 0){
+//                av_usleep(sleep_time);
+//            }
+//        }
+
+        Writer::write_packets(m_ofmt_ctx, enc_pkt);
+       // av_usleep(10000);
+        if(last_time != -1) {
+
+            int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12400 - (Timer::getCurrentTime() - last_time));
+            //int64_t sleep_time = (1000 / framerate * 1000) - (Timer::getCurrentTime() - last_time);
+            if(sleep_time > 0){
+                av_usleep(sleep_time);
+            }
+        }
+        last_time = Timer::getCurrentTime();
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+}
+
+
+int Encoder::encode_audio_rtmp(AVFrame *frame, double &count_audio, int64_t& last_time) {
+    //int64_t func_time = Timer::getCurrentTime();
+    int ret;
+    int stream_index = 1;
+    AVFrame *encode_frame = frame;
+    AVPacket *enc_pkt = av_packet_alloc();
+
+    //设置编码数据帧的pts --->{1, 44100} 表示 一个时间单位一帧 正确
+    if(encode_frame) encode_frame->pts = audio_pts;
+    audio_pts += 1024;
+
+    ret = avcodec_send_frame(audio_enc_ctx, encode_frame);
+    if(ret < 0){
+        av_log(nullptr, AV_LOG_ERROR, "audio_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+
+    av_frame_free(&encode_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(audio_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+
+        enc_pkt->stream_index = stream_index;
+
+        //23.219ms.... --->一帧要多少毫秒
+        enc_pkt->dts = enc_pkt->pts = current_time_audio;
+        current_time_audio += time_per_frame_audio;
+        count_audio += time_per_frame_audio;
+
+//        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+//        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+//        av_log(nullptr, AV_LOG_INFO, "audio packet.\n");
+
+        enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * m_ofmt_ctx->streams[stream_index]->time_base.den / 1000);
+
+//
+//        if(last_time != -1) {
+//            //int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12500 - (Timer::getCurrentTime() - last_time));
+//            int64_t sleep_time =(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000) - 11500 - (Timer::getCurrentTime() - last_time);
+//            if(sleep_time > 0){
+//                av_usleep(sleep_time);
+//            }
+//        }
+
+
+        Writer::write_packets(m_ofmt_ctx, enc_pkt);
+        //av_log(nullptr, AV_LOG_INFO, "encode one packet: %dms.\n", (Timer::getCurrentTime() - func_time) / 1000);
+        //av_usleep(500);
+        if(last_time != -1) {
+            //int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12500 - (Timer::getCurrentTime() - last_time));
+            int64_t sleep_time =(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000) - 10200 - (Timer::getCurrentTime() - last_time);
+            if(sleep_time > 0){
+                av_usleep(sleep_time);
+            }
+        }
+        last_time = Timer::getCurrentTime();
+
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+}
+
+int Encoder::encode_video_rtmp(AVFrame *frame) {
+    int ret;
+    int stream_index = 0;
+    AVFrame *encode_frame = frame;
+    AVPacket *enc_pkt = av_packet_alloc();
+
+    //设置编码数据帧的pts --->{1, framerate} 表示 一个时间单位一帧 正确
+    if (encode_frame) encode_frame->pts = (int64_t)video_pts;
+    video_pts++;
+
+    ret = avcodec_send_frame(video_enc_ctx, encode_frame);
+    if (ret < 0) {
+        av_log(nullptr, AV_LOG_ERROR, "video_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+
+    av_frame_free(&frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(video_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+        enc_pkt->stream_index = stream_index;
+
+        enc_pkt->dts = enc_pkt->pts = current_time_video;
+        current_time_video += time_per_frame_video;
+        //count_video += time_per_frame_video;
+
+//        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+//        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+//        av_log(nullptr, AV_LOG_INFO, "video packet.\n");
+
+        enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * m_ofmt_ctx->streams[stream_index]->time_base.den / 1000);
+
+        Writer::write_packets(m_ofmt_ctx, enc_pkt);
+
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+}
+
+int Encoder::encode_audio_rtmp(AVFrame *frame) {
+    int ret;
+    int stream_index = 1;
+    AVFrame *encode_frame = frame;
+    AVPacket *enc_pkt = av_packet_alloc();
+
+    //设置编码数据帧的pts --->{1, 44100} 表示 一个时间单位一帧 正确
+    if(encode_frame) encode_frame->pts = audio_pts;
+    audio_pts += 1024;
+
+    ret = avcodec_send_frame(audio_enc_ctx, encode_frame);
+    if(ret < 0){
+        av_log(nullptr, AV_LOG_ERROR, "audio_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+
+    av_frame_free(&encode_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(audio_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+
+        enc_pkt->stream_index = stream_index;
+
+        //23.219ms.... --->一帧要多少毫秒
+        enc_pkt->dts = enc_pkt->pts = current_time_audio;
+        current_time_audio += time_per_frame_audio;
+       // count_audio += time_per_frame_audio;
+
+//        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+//        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+//        av_log(nullptr, AV_LOG_INFO, "audio packet.\n");
+
+        enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * m_ofmt_ctx->streams[stream_index]->time_base.den / 1000);
+
+        Writer::write_packets(m_ofmt_ctx, enc_pkt);
+
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+}
+
+
+
