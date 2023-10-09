@@ -159,15 +159,15 @@ int Utils::write_to_fifo(AVAudioFifo *fifo, SwrContext *swr_ctx, AVFrame *src_fr
     //计算应当编码的样本数
 //    int output_frame_size = av_rescale_rnd(swr_get_delay(swr_ctx, 48000) + 1024,
 //                                          48000, 44100, AV_ROUND_UP);
-//      int output_frame_size = av_rescale_rnd(swr_get_delay(swr_ctx, dst_sample_rate) + src_frame->nb_samples,
-//                                          dst_sample_rate, src_frame->sample_rate, AV_ROUND_UP);
+      int output_frame_size = av_rescale_rnd(swr_get_delay(swr_ctx, dst_sample_rate) + src_frame->nb_samples,
+                                          dst_sample_rate, src_frame->sample_rate, AV_ROUND_UP);
 
 
-    int convert_nb_samples = swr_convert(swr_ctx, audio_data_buffer, src_frame->nb_samples,
-                                         (const uint8_t **) src_frame->data, src_frame->nb_samples);
-
-//    int convert_nb_samples =  swr_convert(swr_ctx, audio_data_buffer, output_frame_size,
+//    int convert_nb_samples = swr_convert(swr_ctx, audio_data_buffer, src_frame->nb_samples,
 //                                         (const uint8_t **) src_frame->data, src_frame->nb_samples);
+
+    int convert_nb_samples =  swr_convert(swr_ctx, audio_data_buffer, output_frame_size,
+                                         (const uint8_t **) src_frame->data, src_frame->nb_samples);
 
     av_audio_fifo_realloc(fifo, av_audio_fifo_size(fifo) + convert_nb_samples);
     av_audio_fifo_write(fifo, (void **) audio_data_buffer, convert_nb_samples);

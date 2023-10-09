@@ -65,13 +65,16 @@ int Decoder::init_decoder() {
             }
         }
 
-        if(i == 0){
+
+        if(codec_ctx->codec_type == AVMEDIA_TYPE_VIDEO){
             video_dec_ctx = codec_ctx;
             real_framerate = (video_dec_ctx->framerate.num * 1.0 / video_dec_ctx->framerate.den);
         }
         else {
             audio_dec_ctx = codec_ctx;
             audio_dec_ctx->channel_layout = av_get_default_channel_layout(audio_dec_ctx->channels);
+
+            if(ifmt_ctx->nb_streams == 1) real_framerate = set_framerate;
         }
     }
     return 0;
@@ -301,7 +304,7 @@ int Decoder::test_decode(){
         }
 
         int stream_index = packet->stream_index;
-        if(stream_index == 0) ret = avcodec_send_packet(video_dec_ctx, packet);
+        if(stream_index == 1) ret = avcodec_send_packet(video_dec_ctx, packet);
         else ret = avcodec_send_packet(audio_dec_ctx, packet);
         if(ret < 0){
             av_log(nullptr, AV_LOG_ERROR, "Decoding failed.\n");
@@ -311,7 +314,7 @@ int Decoder::test_decode(){
         av_packet_unref(packet);
         AVFrame* dec_frame = av_frame_alloc();
         while(ret >= 0){
-            if(stream_index == 0) ret = avcodec_receive_frame(video_dec_ctx, dec_frame);
+            if(stream_index == 1) ret = avcodec_receive_frame(video_dec_ctx, dec_frame);
             else ret = avcodec_receive_frame(audio_dec_ctx, dec_frame);
 
             if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) break;
@@ -320,7 +323,7 @@ int Decoder::test_decode(){
 
             dec_frame->pts = dec_frame->best_effort_timestamp;
             dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
-            if (stream_index == 0) {
+            if (stream_index == 1) {
                 {
                     std::lock_guard<std::mutex> lock(mtx);
                     video_queue.push_back(av_frame_clone(dec_frame));

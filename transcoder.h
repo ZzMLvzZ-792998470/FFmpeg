@@ -115,6 +115,31 @@ public:
 
 
 
+    int encode_thread_video_rtmp_device_separate(int& time);
+
+    int encode_thread_audio_rtmp_device_separate(int& time);
+
+
+
+    //rtmp 推流黑色帧
+    int encode_thread_video_rtmp_black_frames_separate(int& time);
+
+    //rtmp 推流静音帧
+    int encode_thread_audio_rtmp_silent_frames_separate(int& time);
+
+    //MP4 编码黑色帧
+    int encode_thread_video_mp4_black_frames_separate(int& time);
+
+    //MP4 编码静音帧
+    int encode_thread_audio_mp4_silent_frames_separate(int& time);
+
+
+
+
+
+
+
+
 private:
     std::vector<std::string> input_filenames;
     std::vector<std::string> output_filenames;
@@ -136,7 +161,7 @@ private:
 
 
     std::vector<IniterI::ptr> IniterIs;
-    //std::vector<const std::shared_ptr<Initer>> IniterIs;
+
     std::vector<IniterO::ptr> IniterOs;
 
     std::vector<Decoder::ptr> decoders;

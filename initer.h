@@ -63,14 +63,22 @@ public:
 
     int init_fmt() override;
 
-//    AVFormatContext *get_vfmt_ctx() ;
-//    AVFormatContext *get_afmt_ctx() ;
 
-    AVFormatContext *get_fmt_ctx() override;
+   AVFormatContext *get_fmt_ctx() override;
 
     void show_devices();
 
-    void show_device_info(const std::string& device_name);
+    void show_dummy_device_info(const std::string& device_name);
+
+
+    int init_device_vfmt_ctx();
+
+    int init_device_afmt_ctx();
+
+//    AVFormatContext *get_vfmt_ctx() ;
+//    AVFormatContext *get_afmt_ctx() ;
+
+
 
 
 private:

@@ -48,13 +48,13 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
             enc_ctx->width = width;
 
             //硬编参数
-//            enc_ctx->bit_rate = 400000;
+           // enc_ctx->bit_rate = 200000;
             enc_ctx->max_b_frames = 0;
-            enc_ctx->gop_size = 5;
+            enc_ctx->gop_size = 1;
 //
 //            enc_ctx->bit_rate_tolerance = 100000;
-//            enc_ctx->rc_min_rate = 350000;
-//            enc_ctx->rc_max_rate = 450000;
+//            enc_ctx->rc_min_rate = 150000;
+//            enc_ctx->rc_max_rate = 250000;
 //            enc_ctx->rc_buffer_size = (int)enc_ctx->bit_rate;
 //            enc_ctx->rc_initial_buffer_occupancy = enc_ctx->rc_buffer_size * 3 / 4;
 
@@ -110,7 +110,7 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
 //            "slow": 比 "medium" 慢一些，提供更高的画质。
 //            "slower": 比 "slow" 更慢，进一步提升画质。
 //            "veryslow": 最慢的预设，提供最高质量的编码结果
-            //av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
+            //av_opt_set(video_enc_ctx->priv_data, "preset", "superfast", 0);
              av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
 //            av_opt_set(video_enc_ctx->priv_data, "tune", "zerolatency", 0);
 //            av_opt_set(video_enc_ctx->priv_data, "profile", "main", 0);
