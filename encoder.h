@@ -29,20 +29,29 @@ public:
     //flush清理最后残留数据
     int flush();
 
-    //编码方法（默认）
+    //编码方法（默认最原始版本，模板）
     int encode(AVFrame *frame, int stream_index, double& count);
 
-    //编码视频帧(有休眠时间)
+    //编码视频帧(有休眠时间,模板)
     int encode_video(AVFrame* frame, int64_t& last_time);
+
+    //编码音频帧 模板
+    int encode_audio(AVFrame* frame);
+
 
     //MP4格式编码视频帧
     int encode_video_mp4(AVFrame* frame);
 
-
+    //MP4格式编码音频帧
     int encode_audio_mp4(AVFrame* frame);
 
-    //编码音频帧
-    int encode_audio(AVFrame* frame);
+
+    void setVideoEncCtxParam();
+
+    void setAudioEncCtxParam();
+
+
+
 
     //获取video_enc_ctx
     AVCodecContext *get_video_enc_ctx(){return video_enc_ctx;}
@@ -51,24 +60,19 @@ public:
     AVCodecContext *get_audio_enc_ctx(){return audio_enc_ctx;}
 
 
+    //编码视频rtmp(已废弃)
+    int encode_video_rtmp(AVFrame *frame, double& count_video, int64_t& last_time);
 
-    //测试编码视频
-    int encode_new(AVFrame *frame, int stream_index, double& count, int64_t& last_time);
-
-    //测试编码
-    int test_encode(AVFrame* frame, int stream_index, double& count, int64_t & time, int& first, int& resend);
-
-
-    void setVideoEncCtxParam();
-
-    void setAudioEncCtxParam();
+    //编码音频rtmp(已废弃)
+    int encode_audio_rtmp(AVFrame *frame, double& count_audio, int64_t& last_time);
 
 
     //编码视频帧rtmp(计算每一帧编码间隔时间)
-    int encode_video_rtmp(AVFrame *frame, double& count_video, int64_t& last_time);
+    int encode_video_rtmp(AVFrame *frame, int64_t& last_time);
 
     //编码音频帧rtmp(计算每一帧编码间隔时间)
-    int encode_audio_rtmp(AVFrame* frame, double& count_audio, int64_t& last_time);
+    int encode_audio_rtmp(AVFrame* frame, int64_t& last_time);
+
 
     //编码视频帧rtmp(不需要时间和计数)
     int encode_video_rtmp(AVFrame *frame);
@@ -77,10 +81,14 @@ public:
     int encode_audio_rtmp(AVFrame* frame);
 
 
+    //编码视频帧rtsp
+    int encode_video_rtsp(AVFrame* frame, int64_t& last_time);
+
+    //编码音频帧rtsp
+    int encode_audio_rtsp(AVFrame* frame, int64_t& last_time);
 
 
 private:
-   // Writer::ptr writer;
     AVFormatContext *m_ofmt_ctx;
 
     int height = 1080;

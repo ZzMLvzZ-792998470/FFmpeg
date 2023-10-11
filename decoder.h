@@ -63,6 +63,7 @@ public:
 
     //视频解码队列pop操作
     void pop_video(){
+        std::lock_guard<std::mutex> lock(m_mtx);
         av_frame_free(&video_queue.front());
         video_queue.pop_front();
     }
@@ -70,8 +71,20 @@ public:
 
     //音频解码队列pop操作
     void pop_audio(){
+        std::lock_guard<std::mutex> lock(m_mtx);
         av_frame_free(&audio_queue.front());
         audio_queue.pop_front();
+    }
+
+
+    AVFrame* get_video_queue_front(){
+        std::lock_guard<std::mutex> lock(m_mtx);
+        return video_queue.front();
+    }
+
+    AVFrame* get_audio_queue_front(){
+        std::lock_guard<std::mutex> lock(m_mtx);
+        return audio_queue.front();
     }
 
 
@@ -97,7 +110,7 @@ private:
     std::deque<AVFrame *> video_queue = {};
     std::deque<AVFrame *> audio_queue = {};
 
-    //std::mutex mtx;
+    std::mutex m_mtx;
 
 };
 

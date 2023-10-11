@@ -34,25 +34,43 @@ public:
     //初始化转码
     int init_transcoder();
 
+    int init_local_device_transcoder();
+
     //转码操作
     int reencode();
 
-
-
-    int init_local_device_transcoder();
-
     int reencode_local_device();
+
+
+    //多线程转码推流rtsp
+    int mp4_files2rtsp();
+
+    //多线程转码推流rtmp
+    int mp4_files2rtmp();
+
+    //多线程转码为MP4
+    int mp4files2mp4();
+
+
+    //录屏
+    int device2mp4();
+
+    //推流
+    int device2rtmp();
+
+
+
+
+
+
+
 
 
 
     //单文件输出---MP4格式
     int encode_onefile_as_mp4(int& work);
 
-    //单文件输出---rtmp
-    int encode_onefile_as_rtmp(int& work);
 
-    //多文件输出---rtmp格式
-    int encode_files_as_rtmp();
 
     //多文件输出---MP4格式
     int encode_files_as_mp4();
@@ -61,14 +79,55 @@ public:
     //多线程编码mp4
     int encode_files_mp4_threads();
 
+
+    //MP4视频编码线程（无依赖）
+    int mp4_video_separate(std::vector<int>& works);
+
+    //MP4音频编码线程（无依赖）
+    int mp4_audio_separate(std::vector<int>& works);
+
+
+
+
+//    //完全独立线程编码视频mp4
+//    int mp4_video_separate(std::vector<int>& works);
+//
+//    //完全独立线程编码音频mp4
+//    int mp4_audio_separate(std::vector<int>& works);
+
+
+    //MP4 编码设备视频
+    int mp4_video_deviceSeparate(int& time, int& video_over);
+
+    //MP4 编码设备音频
+    int mp4_audio_deviceSeparate(int& time, int& audio_over);
+
+
+
+    //MP4 编码黑色帧
+    int mp4_video_blackFrameSeparate(int& time);
+
+    //MP4 编码静音帧
+    int mp4_audio_silentFrameSeparate(int& time);
+
+
+
+
+
+
+
+
+
+    //单文件输出---rtmp
+    int encode_onefile_as_rtmp(int& work);
+
+    //多文件输出---rtmp格式
+    int encode_files_as_rtmp();
+
+
     //多线程编码推流rtmp
     int encode_files_rtmp_threads();
 
-    //MP4视频编码线程（无依赖）
-    int encode_thread_video_mp4(std::vector<int>& works);
-
-    //MP4音频编码线程 （无依赖）
-    int encode_thread_audio_mp4(std::vector<int>& works);
 
     //rtmp视频编码线程（依赖）
     int encode_thread_video_rtmp(std::vector<int>& works, double& count_video, double& count_audio);
@@ -78,103 +137,50 @@ public:
 
 
 
-
-
     int encode_files_rtmp_test();
-
 
     int encode_thread_video_rtmp_new(std::vector<int>& works, double& count_video, double& count_audio);
 
     int encode_thread_audio_rtmp_new(std::vector<int>& works, double& count_video, double& count_audio);
 
 
-
-
-    //多线程转码推流rtsp
-    int encode_thread_rtsp();
-
-    //多线程转码推流rtmp
-    int encode_thread_rtmp();
-
-    //多线程转码为MP4
-    int encode_thread_mp4();
-
-    //完全独立线程编码视频mp4
-    int encode_thread_video_mp4_separate(std::vector<int>& works);
-
-    //完全独立线程编码音频mp4
-    int encode_thread_audio_mp4_separate(std::vector<int>& works);
-
-
     //完全独立线程编码视频推流，不依赖音频编码计数和时间 一秒内推流指定个数视频帧
-    int encode_thread_video_rtmp_separate(std::vector<int>& works);
+    int rtmp_video_perSecondSeparate(std::vector<int>& works);
 
     //完全独立线程编码音频推流，不依赖视频编码计数和时间 一秒内推流指定个数音频帧
-    int encode_thread_audio_rtmp_separate(std::vector<int>& works);
+    int rtmp_audio_perSecondSeparate(std::vector<int>& works);
 
 
+    //rtmp独立线程推流视频 每个帧指定间隔休眠时间
+    int rtmp_video_perFrameSeparate(std::vector<int>& works);
 
-
-
-
-    //录屏
-    int encode_device_mp4();
-
-    //推流
-    int encode_device_rtmp();
+    //rtmp独立线程推流音频 每个帧指定间隔休眠时间
+    int rtmp_audio_perFrameSeparate(std::vector<int>& works);
 
 
     //rtmp 推流设备视频
-    int encode_thread_video_rtmp_device_separate(int& time, int& video_over);
+    int rtmp_video_deviceSeparate(int& time, int& video_over);
 
     //rtmp 推流设备音频
-    int encode_thread_audio_rtmp_device_separate(int& time, int& audio_over);
-
-
-    //MP4 编码设备视频
-    int encode_thread_video_deivce_mp4_separate(int& time, int& video_over);
-
-    //MP4 编码设备音频
-    int encode_thread_audio_device_mp4_separate(int& time, int& audio_over);
+    int rtmp_audio_deviceSeparate(int& time, int& audio_over);
 
 
     //rtmp 推流黑色帧
-    int encode_thread_video_rtmp_black_frames_separate(int& time);
+    int rtmp_video_blackFrameSeparate(int& time);
 
     //rtmp 推流静音帧
-    int encode_thread_audio_rtmp_silent_frames_separate(int& time);
-
-    //MP4 编码黑色帧
-    int encode_thread_video_mp4_black_frames_separate(int& time);
-
-    //MP4 编码静音帧
-    int encode_thread_audio_mp4_silent_frames_separate(int& time);
-
-
-
-
-    int encode_thread_video_rtsp_separate(std::vector<int>& works);
-
-
-    int encode_thread_audio_rtsp_separate(std::vector<int>& works);
-
-
-
-
-
-    int encode_thread_video_rtsp_no_separate(std::vector<int>& works, double& count_video);
-
-
-    int encode_thread_audio_rtsp_no_separate(std::vector<int>& works, double& count_audio);
+    int rtmp_audio_silentFrameSeparate(int& time);
 
 
 
 
 
 
+    //rtsp 视频推流
+    int rtsp_video_perFrameSeparate(std::vector<int>& works);
 
-
-
+    //rtsp 音频推流
+    int rtsp_audio_perFrameSeparate(std::vector<int>& works);
 
 
 private:

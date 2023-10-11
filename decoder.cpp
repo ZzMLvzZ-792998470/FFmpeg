@@ -24,8 +24,6 @@ Decoder::~Decoder() {
 
     if(audio_dec_ctx) avcodec_free_context(&audio_dec_ctx);
     if(video_dec_ctx) avcodec_free_context(&video_dec_ctx);
-//    avcodec_free_context(&audio_dec_ctx);
-//    avcodec_free_context(&video_dec_ctx);
 }
 
 int Decoder::init_decoder() {
@@ -113,7 +111,7 @@ void Decoder::set_video_queue_cache(int &cache_size) {
 
 int Decoder::decode_high2low() {
     int ret;
-    video_queue_cache *= 2;
+    //video_queue_cache *= 2;
     AVPacket *packet = av_packet_alloc();
     int time = 0;
     while(true) {
@@ -167,19 +165,13 @@ int Decoder::decode_high2low() {
                     }
 
                     {
-                        std::lock_guard<std::mutex> lock(mtx);
+                        std::lock_guard<std::mutex> lock(m_mtx);
                         video_queue.push_back(av_frame_clone(dec_frame));
                     }
                 }
             } else{
-//                {
-//                    std::unique_lock<std::mutex> lock(mtx);
-//                    while(audio_queue.size() >= 5){
-//                        cond.wait(lock);
-//                    }
-//                }
                 {
-                    std::lock_guard<std::mutex> lock(mtx);
+                    std::lock_guard<std::mutex> lock(m_mtx);
                     audio_queue.push_back(av_frame_clone(dec_frame));
                 }
             }
@@ -244,7 +236,7 @@ int Decoder::decode_low2high() {
                     }
 
                     {
-                        std::lock_guard<std::mutex> lock(mtx);
+                        std::lock_guard<std::mutex> lock(m_mtx);
                         video_queue.push_back(av_frame_clone(dec_frame));
 
                         //内存泄漏存疑点
@@ -253,14 +245,8 @@ int Decoder::decode_low2high() {
                     av_frame_unref(dec_frame);
                     count += frameratio;
                 }else{
-//                    {
-//                        std::unique_lock<std::mutex> lock(mtx);
-//                        while(audio_queue.size() >= audio_queue_cache){
-//                            cond.wait(lock);
-//                        }
-//                    }
                     {
-                        std::lock_guard<std::mutex> lock(mtx);
+                        std::lock_guard<std::mutex> lock(m_mtx);
                         audio_queue.push_back(av_frame_clone(dec_frame));
                     }
                 }
@@ -276,7 +262,7 @@ int Decoder::decode_low2high() {
                     }
                 }
                 {
-                    std::lock_guard<std::mutex> lock(mtx);
+                    std::lock_guard<std::mutex> lock(m_mtx);
                     video_queue.push_back(av_frame_clone(prev_frame));
                     if (count < 1.0f) av_frame_free(&prev_frame);
                 }

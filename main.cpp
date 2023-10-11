@@ -9,16 +9,19 @@ int main() {
 
      int64_t start_time = Timer::getCurrentTime();
 //    int ret;
-    std::string file0 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
+   // std::string file0 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
      // std::string file0 = "C://Users//ZZM//Desktop//素材//test.mp4";
 //     std::string file0 = "C://Users//ZZM//Desktop//素材//网上的素材//抖肩舞.mp4";
-//    std::string file1 = "C://Users//ZZM//Desktop//素材//hot food.mp4";
-//    std::string file2 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
-//    std::string file3 = "C://Users//ZZM//Desktop//素材//wy.mp4";
+    //std::string file2 = "C://Users//ZZM//Desktop//素材//hot food.mp4";
+    //std::string file3 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
+    std::string file0 = "C://Users//ZZM//Desktop//素材//wy.mp4";
+
+    //std::string file0 = "C://Users//ZZM//Desktop//素材//test_60.mp4";
+
 //
-    std::string output_file0 = "rtmp://localhost:1935/live/livestream";
-    //std::string output_file0 = "output.mp4";
-      //std::string output_file0 = "rtsp://localhost:8554/live/livestream";
+    //std::string output_file0 = "rtmp://localhost:1935/live/livestream";
+     std::string output_file0 = "output.mp4";
+     // std::string output_file0 = "rtsp://localhost:8554/live/livestream";
 
 
      std::vector<std::string> input_files;
