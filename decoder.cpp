@@ -6,9 +6,6 @@ extern std::mutex mtx;
 extern std::condition_variable cond;
 std::mutex device_mutex;
 
-
-
-
 Decoder::Decoder(int set_framerate, AVFormatContext *ifmt_ctx) : ifmt_ctx(ifmt_ctx), set_framerate(set_framerate){
 
 }

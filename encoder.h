@@ -63,8 +63,11 @@ public:
 
     void setAudioEncCtxParam();
 
+
+    //编码视频帧rtmp(计算每一帧编码间隔时间)
     int encode_video_rtmp(AVFrame *frame, double& count_video, int64_t& last_time);
 
+    //编码音频帧rtmp(计算每一帧编码间隔时间)
     int encode_audio_rtmp(AVFrame* frame, double& count_audio, int64_t& last_time);
 
     //编码视频帧rtmp(不需要时间和计数)

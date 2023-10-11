@@ -4,6 +4,7 @@
 std::mutex mtx;
 std::condition_variable cond;
 
+
 std::mutex mtx2;
 std::condition_variable cond2;
 
@@ -661,11 +662,10 @@ int Transcoder::encode_thread_video_rtmp(std::vector<int> &works, double &count_
         }
 
         //编码视频帧
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_video(Utils::merge_way(width, height, merge_frames), last_time);
-            count_video += per_frame_video;
-        }
+
+        encoders[0]->encode_video(Utils::merge_way(width, height, merge_frames), last_time);
+        count_video += per_frame_video;
+
     }
     encoders[0]->encode_video_mp4(nullptr);
 
@@ -735,11 +735,10 @@ int Transcoder::encode_thread_audio_rtmp(std::vector<int> &works, double &count_
         while(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
-                    ret = encoders[0]->encode_audio(audio_frame);
-                    count_audio += per_frame_audio;
-                }
+
+                ret = encoders[0]->encode_audio(audio_frame);
+                count_audio += per_frame_audio;
+
                 {
                     std::unique_lock<std::mutex> lock(mtx2);
                     cond2.notify_all();
@@ -814,10 +813,9 @@ int Transcoder::encode_thread_video_mp4(std::vector<int>& works) {
                 merge_frames[i] = av_frame_clone(last_frames[i]);
             }
         }
-        {
-            std::lock_guard<std::mutex> lcok(mtx2);
-            encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
-        }
+
+        encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
+
     }
     encoders[0]->encode_video_mp4(nullptr);
 
@@ -873,10 +871,9 @@ int Transcoder::encode_thread_audio_mp4(std::vector<int>& works) {
         while(av_audio_fifo_size(fifo) > 0){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
-                    ret = encoders[0]->encode_audio(audio_frame);
-                }
+
+                ret = encoders[0]->encode_audio(audio_frame);
+
                 if(ret < 0) return -1;
             } else break;
         }
@@ -893,15 +890,10 @@ int Transcoder::reencode() {
 
 
     if(output_filenames[0].substr(0, 4) == "rtmp"){
-       // ret = encode_files_as_rtmp();
-      // ret = encode_files_rtmp_threads();
-       //ret = encode_files_rtmp_test();
        ret = encode_thread_rtmp();
     }
 
     if(output_filenames[0].substr(output_filenames[0].size() - 4, 4) == ".mp4"){
-        //ret = encode_files_as_mp4();
-        //ret = encode_files_mp4_threads();
         ret = encode_thread_mp4();
     }
 
@@ -1196,12 +1188,12 @@ int Transcoder::encode_thread_video_rtmp_new(std::vector<int> &works, double &co
         }
 
         //编码视频帧
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
+//        {
+//            std::lock_guard<std::mutex> lock(mtx2);
             encoders[0]->encode_video_rtmp(Utils::merge_way(width, height, merge_frames), count_video, last_time);
             //encoders[0]->encode_video(Utils::merge_way(width, height, merge_frames), last_time);
             //count_video += per_frame_video;
-        }
+        //}
         {
             std::unique_lock<std::mutex> locK(mtx2);
             cond2.notify_all();
@@ -1299,12 +1291,12 @@ int Transcoder::encode_thread_audio_rtmp_new(std::vector<int> &works, double &co
         if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
+//                {
+//                    std::lock_guard<std::mutex> lock(mtx2);
                     //ret = encoders[0]->encode_audio(audio_frame);
                     ret = encoders[0]->encode_audio_rtmp(audio_frame, count_audio, last_time);
                     //count_audio += per_frame_audio;
-                }
+                //}
                 {
                     std::unique_lock<std::mutex> lock(mtx2);
                     cond2.notify_all();
@@ -1313,10 +1305,10 @@ int Transcoder::encode_thread_audio_rtmp_new(std::vector<int> &works, double &co
                 if(ret < 0) return -1;
             } else break;
         } else{
-            {
-                std::lock_guard<std::mutex> lock(mtx2);
+//            {
+//                std::lock_guard<std::mutex> lock(mtx2);
                 ret = encoders[0]->encode_audio_rtmp(av_frame_clone(silence_frame), count_audio ,last_time);
-            }
+            //}
             {
                 std::unique_lock<std::mutex> lock(mtx2);
                 cond2.notify_all();
@@ -1413,14 +1405,13 @@ int Transcoder::encode_thread_video_rtmp_separate(std::vector<int>& works) {
         }
 
         //编码视频帧
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_video_rtmp(Utils::merge_way(width, height, merge_frames));
-        }
+
+        encoders[0]->encode_video_rtmp(Utils::merge_way(width, height, merge_frames));
+
         count_video_frames++;
     }
     encoders[0]->encode_video_rtmp(nullptr);
-    //encoders[0]->encode_video_mp4(nullptr);
+
 
     //释放申请的内存
     for(int i = 0; i < inputNums; i++){
@@ -1484,10 +1475,7 @@ int Transcoder::encode_thread_audio_rtmp_separate(std::vector<int>& works) {
                                              encoders[i]->get_audio_enc_ctx()->sample_fmt,
                                              encoders[i]->get_audio_enc_ctx()->sample_rate);
 
-//                        {
-//                            std::unique_lock<std::mutex> lock(mtx);
-//                            cond.notify_all();
-//                        }
+
 
                         {
                             std::lock_guard<std::mutex> lock(mtx);
@@ -1508,18 +1496,16 @@ int Transcoder::encode_thread_audio_rtmp_separate(std::vector<int>& works) {
         if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
-                    ret = encoders[0]->encode_audio_rtmp(audio_frame);
-                    count_audio_frames++;
-                }
+
+                ret = encoders[0]->encode_audio_rtmp(audio_frame);
+                count_audio_frames++;
+
                 if(ret < 0) return -1;
             } else break;
         }
 
     }
     encoders[0]->encode_audio_rtmp(nullptr);
-    //encoders[0]->encode_audio(nullptr);
     return 0;
 }
 
@@ -1567,11 +1553,9 @@ int Transcoder::encode_thread_video_mp4_separate(std::vector<int> &works) {
                 merge_frames[i] = av_frame_clone(last_frames[i]);
             }
         }
-        //编码视频帧
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
-        }
+
+        encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
+
     }
     encoders[0]->encode_video_mp4(nullptr);
 
@@ -1642,11 +1626,9 @@ int Transcoder::encode_thread_audio_mp4_separate(std::vector<int> &works) {
         if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
-                    //ret = encoders[0]->encode_audio_rtmp(audio_frame);
-                    ret = encoders[0]->encode_audio_mp4(audio_frame);
-                }
+
+                ret = encoders[0]->encode_audio_mp4(audio_frame);
+
                 if(ret < 0) return -1;
             } else break;
         }
@@ -1687,7 +1669,6 @@ int Transcoder::encode_thread_mp4() {
 
 int Transcoder::encode_thread_video_rtmp_device_separate(int &time, int& video_over) {
     int ret;
-    //AVFrame *last_frame = FrameCreater::create_video_frame();
 
     int video_frames_counts = framerate * time;
     int per_second_counts = 0;
@@ -1706,11 +1687,9 @@ int Transcoder::encode_thread_video_rtmp_device_separate(int &time, int& video_o
         }
 
         if(!decoders[0]->get_video_queue().empty()){
-            //encoders[0]->encode_video_rtmp(Utils::change_frame_size(width, height, av_frame_clone(decoders[0]->get_video_queue().front())));
-            {
-                std::lock_guard<std::mutex> lock(mtx2);
-                encoders[0]->encode_video_rtmp(Utils::change_frame_size(width, height, av_frame_clone(decoders[0]->get_video_queue().front())));
-            }
+
+            encoders[0]->encode_video_rtmp(Utils::change_frame_size(width, height, av_frame_clone(decoders[0]->get_video_queue().front())));
+
             decoders[0]->pop_video();
             per_second_counts++;
             video_frames_counts--;
@@ -1722,12 +1701,9 @@ int Transcoder::encode_thread_video_rtmp_device_separate(int &time, int& video_o
             cond.notify_all();
         }
 
-
-
     }
 
     encoders[0]->encode_video_rtmp(nullptr);
-    //av_frame_free(&last_frame);
     video_over = 1;
     av_usleep(7000000);
     return 0;
@@ -1767,20 +1743,18 @@ int Transcoder::encode_thread_audio_rtmp_device_separate(int &time, int& audio_o
                                      encoders[0]->get_audio_enc_ctx()->sample_rate);
 
 
-//                {
-//                    std::lock_guard<std::mutex> lock(mtx);
-                    decoders[1]->pop_audio();
-//                }
+
+                decoders[1]->pop_audio();
+
             }
         }
 
         if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), false);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
-                    ret = encoders[0]->encode_audio_rtmp(audio_frame);
-                }
+
+                ret = encoders[0]->encode_audio_rtmp(audio_frame);
+
                 audio_frames_counts--;
                 per_second_counts++;
                 if(ret < 0) return -1;
@@ -1798,7 +1772,7 @@ int Transcoder::encode_thread_audio_rtmp_device_separate(int &time, int& audio_o
 int Transcoder::encode_thread_video_deivce_mp4_separate(int& time, int& video_over) {
     int ret;
     int video_frames_counts = framerate * time;
-    //AVFrame* last_frame = FrameCreater::create_video_frame();
+
     int64_t per_second_time = Timer::getCurrentTime();
     int per_second_counts = 0;
 
@@ -1814,18 +1788,16 @@ int Transcoder::encode_thread_video_deivce_mp4_separate(int& time, int& video_ov
         }
 
         if(!decoders[0]->get_video_queue().empty()){
-            {
-                std::lock_guard<std::mutex> lock(mtx2);
-                encoders[0]->encode_video_mp4(Utils::change_frame_size(width, height, av_frame_clone(
+
+            encoders[0]->encode_video_mp4(Utils::change_frame_size(width, height, av_frame_clone(
                         decoders[0]->get_video_queue().front())));
-            }
+
             per_second_counts++;
             video_frames_counts--;
 
-//            {
-//                std::lock_guard<std::mutex> lock(mtx);
-                decoders[0]->pop_video();
-            //}
+
+            decoders[0]->pop_video();
+
         }
 
         {
@@ -1881,11 +1853,10 @@ int Transcoder::encode_thread_audio_device_mp4_separate(int& time, int& audio_ov
         if((ret = av_audio_fifo_size(fifo)) >= encoders[0]->get_audio_enc_ctx()->frame_size){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), false);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
-                    ret = encoders[0]->encode_audio_mp4(audio_frame);
-                    if(ret < 0) return -1;
-                }
+
+                ret = encoders[0]->encode_audio_mp4(audio_frame);
+                if(ret < 0) return -1;
+
                 audio_frames_counts--;
                 per_second_counts++;
 
@@ -1923,10 +1894,9 @@ int Transcoder::encode_thread_video_rtmp_black_frames_separate(int &time) {
             continue;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_video_rtmp(Utils::change_frame_size(width, height, av_frame_clone(black_frame)));
-        }
+
+        encoders[0]->encode_video_rtmp(Utils::change_frame_size(width, height, av_frame_clone(black_frame)));
+
         per_second_counts++;
         video_frames_counts--;
 
@@ -1959,10 +1929,8 @@ int Transcoder::encode_thread_audio_rtmp_silent_frames_separate(int &time) {
             continue;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_audio_rtmp(av_frame_clone(silent_frame));
-        }
+        encoders[0]->encode_audio_rtmp(av_frame_clone(silent_frame));
+
         per_second_counts++;
         audio_frames_counts--;
     }
@@ -1980,12 +1948,10 @@ int Transcoder::encode_thread_video_mp4_black_frames_separate(int &time) {
 
     int video_frames_counts = framerate * time;
     while(video_frames_counts >= 0){
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_video_mp4(Utils::change_frame_size(width, height, av_frame_clone(black_frame)));
-            video_frames_counts--;
-        }
+        encoders[0]->encode_video_mp4(Utils::change_frame_size(width, height, av_frame_clone(black_frame)));
+        video_frames_counts--;
     }
+
     encoders[0]->encode_video_mp4(nullptr);
     av_frame_free(&black_frame);
     return 0;
@@ -1998,13 +1964,12 @@ int Transcoder::encode_thread_audio_mp4_silent_frames_separate(int &time) {
     int ret;
     AVFrame *silent_frame = FrameCreater::create_audio_frame();
     int audio_frames_counts = (encoders[0]->get_audio_enc_ctx()->sample_rate / encoders[0]->get_audio_enc_ctx()->frame_size) * time;
+
     while(audio_frames_counts >= 0){
-        {
-            std::lock_guard<std::mutex> lock(mtx2);
-            encoders[0]->encode_audio_mp4(av_frame_clone(silent_frame));
-            audio_frames_counts--;
-        }
+        encoders[0]->encode_audio_mp4(av_frame_clone(silent_frame));
+        audio_frames_counts--;
     }
+
     encoders[0]->encode_audio_mp4(nullptr);
     av_frame_free(&silent_frame);
     return 0;
@@ -2029,15 +1994,15 @@ int Transcoder::encode_thread_rtsp() {
     double count_audio = 0.0;
 
 
-    Thread thread_encode_video(&Transcoder::encode_thread_video_rtsp_no_separate, this, std::ref(works), std::ref(count_video));
-
-    Thread thread_encode_audio(&Transcoder::encode_thread_audio_rtsp_no_separate, this, std::ref(works), std::ref(count_audio));
-
-
-
-//    Thread thread_encode_video(&Transcoder::encode_thread_video_rtsp_separate, this, std::ref(works));
+//    Thread thread_encode_video(&Transcoder::encode_thread_video_rtsp_no_separate, this, std::ref(works), std::ref(count_video));
 //
-//    Thread thread_encode_audio(&Transcoder::encode_thread_audio_rtsp_separate, this, std::ref(works));
+//    Thread thread_encode_audio(&Transcoder::encode_thread_audio_rtsp_no_separate, this, std::ref(works), std::ref(count_audio));
+
+
+
+    Thread thread_encode_video(&Transcoder::encode_thread_video_rtsp_separate, this, std::ref(works));
+
+    Thread thread_encode_audio(&Transcoder::encode_thread_audio_rtsp_separate, this, std::ref(works));
 
 
 //    Thread thread_encode_video(&Transcoder::encode_thread_video_rtmp_separate, this, std::ref(works));
@@ -2123,12 +2088,12 @@ int Transcoder::encode_thread_video_rtsp_separate(std::vector<int> &works) {
                 merge_frames[i] = av_frame_clone(last_frames[i]);
             }
         }
-        {
-            std::lock_guard<std::mutex> lcok(mtx2);
+//        {
+//            std::lock_guard<std::mutex> lcok(mtx2);
             encoders[0]->encode_video_rtmp(Utils::merge_way(width, height, merge_frames));
             //av_usleep(11000);
             //encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
-        }
+        //}
         //per_second_count++;
     }
     encoders[0]->encode_video_rtmp(nullptr);
@@ -2238,12 +2203,12 @@ int Transcoder::encode_thread_audio_rtsp_separate(std::vector<int>& works){
         if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
             AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                {
-                    std::lock_guard<std::mutex> lock(mtx2);
+//                {
+//                    std::lock_guard<std::mutex> lock(mtx2);
                     ret = encoders[0]->encode_audio_rtmp(audio_frame);
                    // av_usleep(300);
                     //ret = encoders[0]->encode_audio_mp4(audio_frame);
-                }
+                //}
                 if(ret < 0) return -1;
                 //per_second_count++;
             } else break;

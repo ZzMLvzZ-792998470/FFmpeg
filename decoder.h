@@ -97,6 +97,8 @@ private:
     std::deque<AVFrame *> video_queue = {};
     std::deque<AVFrame *> audio_queue = {};
 
+    //std::mutex mtx;
+
 };
 
 

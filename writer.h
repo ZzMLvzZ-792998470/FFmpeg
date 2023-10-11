@@ -10,7 +10,7 @@ extern "C" {
 
 #include <string>
 #include <memory>
-
+#include <mutex>
 
 
 
@@ -25,6 +25,8 @@ public:
     //写输出文件尾
     static int write_tail(AVFormatContext* ofmt_ctx);
 
+private:
+    static std::mutex mtx;
 };
 
 

@@ -1,5 +1,6 @@
 #include "writer.h"
 
+std::mutex Writer::mtx;
 
 int Writer::write_header(AVFormatContext* ofmt_ctx) {
     int ret = avformat_write_header(ofmt_ctx, nullptr);
@@ -13,7 +14,11 @@ int Writer::write_header(AVFormatContext* ofmt_ctx) {
 
 
 int Writer::write_packets(AVFormatContext* ofmt_ctx, AVPacket *enc_pkt) {
-    int ret = av_interleaved_write_frame(ofmt_ctx, enc_pkt);
+    int ret;
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ret = av_interleaved_write_frame(ofmt_ctx, enc_pkt);
+    }
     if(ret < 0){
         av_log(nullptr, AV_LOG_ERROR, "Error occurred when during(write_frame) output file\n");
         return ret;
