@@ -39,15 +39,23 @@ IniterI::~IniterI(){
 
 IniterD::IniterD() {
     avdevice_register_all();
-//    vfmt_ctx = avformat_alloc_context();
-//    afmt_ctx = avformat_alloc_context();
+
+
+
     fmt_ctx = avformat_alloc_context();
+
+
+
+    vfmt_ctx = avformat_alloc_context();
+    afmt_ctx = avformat_alloc_context();
 }
 
 IniterD::~IniterD() {
     avformat_close_input(&fmt_ctx);
-//    avformat_close_input(&afmt_ctx);
-//    avformat_close_input(&vfmt_ctx);
+
+
+    avformat_close_input(&afmt_ctx);
+    avformat_close_input(&vfmt_ctx);
 }
 
 int IniterD::init_fmt() {
@@ -57,20 +65,22 @@ int IniterD::init_fmt() {
 //    av_dict_set(&options, "rtbufsize", "128M", 0);
 //    av_dict_set(&options, "framerate", "25", 0);
 
-//    ret = init_device_vfmt_ctx();
-//    if(ret < 0){
-//        av_log(nullptr, AV_LOG_ERROR, "init_device_vfmt_ctx failed.\n");
-//        return ret;
-//    }
-
-
-    ret = init_device_afmt_ctx();
+    ret = init_device_vfmt_ctx();
     if(ret < 0){
-        av_log(nullptr, AV_LOG_ERROR, "init_device_afmt_ctx failed.\n");
+        av_log(nullptr, AV_LOG_ERROR, "init_device_vfmt_ctx failed.\n");
         return ret;
     }
 
-    av_dump_format(fmt_ctx, 0, "streams-dshow", 0);
+
+
+
+//    ret = init_device_afmt_ctx();
+//    if(ret < 0){
+//        av_log(nullptr, AV_LOG_ERROR, "init_device_afmt_ctx failed.\n");
+//        return ret;
+//    }
+
+    //av_dump_format(fmt_ctx, 0, "streams-dshow", 0);
     return 0;
 
 }
@@ -78,45 +88,53 @@ int IniterD::init_fmt() {
 
 
 int IniterD::init_device_vfmt_ctx() {
+
+    AVDictionary* options = nullptr;
+    av_dict_set(&options, "rtbufsize", "4096000", 0);
+
+
     video_input_fmt = av_find_input_format("dshow");
     //if (avformat_open_input(&fmt_ctx, "video=dummy", video_input_fmt, nullptr) != 0) {
-    if(avformat_open_input(&fmt_ctx, "video=HP Wide Vision HD Camera", video_input_fmt, nullptr) != 0){
+    if(avformat_open_input(&vfmt_ctx, "video=HP Wide Vision HD Camera", video_input_fmt, &options) != 0){
         std::cerr << "无法打开视频设备" << std::endl;
         avformat_close_input(&fmt_ctx);
         return -1;
     }
 
     // 查找视频流
-    int videoStreamIndex = av_find_best_stream(fmt_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+    int videoStreamIndex = av_find_best_stream(vfmt_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     if (videoStreamIndex < 0) {
         std::cerr << "未找到视频流" << std::endl;
-        avformat_close_input(&fmt_ctx);
+        avformat_close_input(&vfmt_ctx);
         return -1;
     }
 
-    //av_dump_format(fmt_ctx, 0, "video=HP Wide Vision HD Camera", 0);
+    av_dump_format(vfmt_ctx, 0, "video=HP Wide Vision HD Camera", 0);
     return 0;
 }
 
 
 
 int IniterD::init_device_afmt_ctx() {
-       audio_input_fmt = av_find_input_format("dshow");
+    audio_input_fmt = av_find_input_format("dshow");
+
+    AVDictionary* options = nullptr;
+    av_dict_set(&options, "rtbufsize", "4096000", 0);
    // if (avformat_open_input(&fmt_ctx, "default", audio_input_fmt, nullptr) != 0) {
-    if(avformat_open_input(&fmt_ctx, "audio=Microphone Array (Realtek(R) Audio)", audio_input_fmt, nullptr) != 0){
+    if(avformat_open_input(&afmt_ctx, "audio=Microphone Array (Realtek(R) Audio)", audio_input_fmt, nullptr) != 0){
         std::cerr << "无法打开音频设备" << std::endl;
         return -1;
     }
 
     // 查找音频流
-    int audioStreamIndex = av_find_best_stream(fmt_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+    int audioStreamIndex = av_find_best_stream(afmt_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
     if (audioStreamIndex < 0) {
         std::cerr << "未找到音频流" << std::endl;
-        avformat_close_input(&fmt_ctx);
+        avformat_close_input(&afmt_ctx);
         return -1;
     }
 
-    //av_dump_format(fmt_ctx, 0, "audio=Microphone Array (Realtek(R) Audio)", 0);
+    av_dump_format(afmt_ctx, 0, "audio=Microphone Array (Realtek(R) Audio)", 0);
     return 0;
 
 }
@@ -129,13 +147,13 @@ AVFormatContext* IniterD::get_fmt_ctx() {
     return fmt_ctx;
 }
 
-//AVFormatContext* IniterD::get_afmt_ctx() {
-//    return afmt_ctx;
-//}
-//
-//AVFormatContext* IniterD::get_vfmt_ctx() {
-//    return vfmt_ctx;
-//}
+AVFormatContext* IniterD::get_afmt_ctx() {
+    return afmt_ctx;
+}
+
+AVFormatContext* IniterD::get_vfmt_ctx() {
+    return vfmt_ctx;
+}
 
 
 
@@ -164,7 +182,9 @@ void IniterD::show_dummy_device_info(const std::string& device_name) {
 
     std::cout << "Device: " << device_name << "==============\n";
     //printf("Device Info=============\n");
-    avformat_open_input(&fmt_ctx, "video=dummy", iformat, &options);
+   //avformat_open_input(&fmt_ctx, "video=dummy", iformat, &options);
+    avformat_open_input(&fmt_ctx, ("video="+device_name).c_str(), iformat, &options);
+
     std::cout << "======================\n";
 
     //avformat_close_input(&fmt_ctx);
@@ -187,6 +207,7 @@ IniterO::~IniterO(){
 
 int IniterO::init_fmt() {
     if(filename.substr(0, 4) == "rtmp")  avformat_alloc_output_context2(&ofmt_ctx, nullptr, "flv", filename.c_str());
+    else if(filename.substr(0, 4) == "rtsp" ) avformat_alloc_output_context2(&ofmt_ctx, nullptr, "rtsp", filename.c_str());
     else avformat_alloc_output_context2(&ofmt_ctx, nullptr, nullptr, filename.c_str());
     if (!ofmt_ctx) {
         av_log(nullptr, AV_LOG_ERROR, "Could not create output context\n");

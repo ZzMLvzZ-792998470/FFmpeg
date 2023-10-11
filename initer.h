@@ -75,16 +75,17 @@ public:
 
     int init_device_afmt_ctx();
 
-//    AVFormatContext *get_vfmt_ctx() ;
-//    AVFormatContext *get_afmt_ctx() ;
+    AVFormatContext *get_vfmt_ctx() ;
+    AVFormatContext *get_afmt_ctx() ;
 
 
 
 
 private:
     AVFormatContext *fmt_ctx;
-//    AVFormatContext *vfmt_ctx;
-//    AVFormatContext *afmt_ctx;
+
+    AVFormatContext *vfmt_ctx;
+    AVFormatContext *afmt_ctx;
 
     const AVInputFormat *audio_input_fmt = nullptr;
     const AVInputFormat *video_input_fmt = nullptr;

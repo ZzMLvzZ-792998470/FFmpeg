@@ -55,6 +55,12 @@ public:
     int test_decode();
 
 
+    int test_decode_only_video(int& video_over);
+
+    int test_decode_only_audio(int& audio_over);
+
+
+
     //视频解码队列pop操作
     void pop_video(){
         av_frame_free(&video_queue.front());
@@ -78,10 +84,10 @@ private:
     double set_framerate;
     double real_framerate;
 
-    int video_queue_cache = 10;
+    int video_queue_cache = 25;
     int audio_queue_cache = 5;
 
-    AVCodecContext *audio_dec_ctx, *video_dec_ctx;
+    AVCodecContext *audio_dec_ctx = nullptr, *video_dec_ctx = nullptr;
 
     double frameratio = 0.0;
     double count = 0.0;

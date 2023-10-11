@@ -2,6 +2,7 @@
 
 #include <mutex>
 
+extern std::mutex mtx2;
 
 Encoder::Encoder(int height, int width, int framerate, int samplerate) : height(height),
                                                                 width(width),
@@ -48,13 +49,15 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
             enc_ctx->width = width;
 
             //硬编参数
-           // enc_ctx->bit_rate = 200000;
+
             enc_ctx->max_b_frames = 0;
             enc_ctx->gop_size = 1;
 //
+//
+//            enc_ctx->bit_rate = 400000;
 //            enc_ctx->bit_rate_tolerance = 100000;
-//            enc_ctx->rc_min_rate = 150000;
-//            enc_ctx->rc_max_rate = 250000;
+//            enc_ctx->rc_min_rate = 350000;
+//            enc_ctx->rc_max_rate = 450000;
 //            enc_ctx->rc_buffer_size = (int)enc_ctx->bit_rate;
 //            enc_ctx->rc_initial_buffer_occupancy = enc_ctx->rc_buffer_size * 3 / 4;
 
@@ -110,7 +113,7 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
 //            "slow": 比 "medium" 慢一些，提供更高的画质。
 //            "slower": 比 "slow" 更慢，进一步提升画质。
 //            "veryslow": 最慢的预设，提供最高质量的编码结果
-            //av_opt_set(video_enc_ctx->priv_data, "preset", "superfast", 0);
+           // av_opt_set(video_enc_ctx->priv_data, "preset", "superfast", 0);
              av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
 //            av_opt_set(video_enc_ctx->priv_data, "tune", "zerolatency", 0);
 //            av_opt_set(video_enc_ctx->priv_data, "profile", "main", 0);
@@ -133,7 +136,7 @@ int Encoder::init_encoder(AVFormatContext *ofmt_ctx) {
             audio_enc_ctx = enc_ctx;
 
             time_per_frame_audio = 1024 * 1.0 * 1000 / audio_enc_ctx->sample_rate;
-           // time_per_frame_audio = audio_enc_ctx->frame_size * 1.0 / 1000 / audio_enc_ctx->sample_rate;
+           //time_per_frame_audio = audio_enc_ctx->frame_size * 1.0 / 1000 / audio_enc_ctx->sample_rate;
         }
 
 
@@ -654,6 +657,7 @@ void Encoder::setVideoEncCtxParam() {
 
 int Encoder::encode_video_rtmp(AVFrame *frame, double &count_video, int64_t &last_time) {
     int ret;
+    int64_t func_time = Timer::getCurrentTime();
     int stream_index = 0;
     AVFrame *encode_frame = frame;
     AVPacket *enc_pkt = av_packet_alloc();
@@ -693,17 +697,37 @@ int Encoder::encode_video_rtmp(AVFrame *frame, double &count_video, int64_t &las
 //            }
 //        }
 
-        Writer::write_packets(m_ofmt_ctx, enc_pkt);
-       // av_usleep(10000);
-        if(last_time != -1) {
 
-            int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12400 - (Timer::getCurrentTime() - last_time));
-            //int64_t sleep_time = (1000 / framerate * 1000) - (Timer::getCurrentTime() - last_time);
-            if(sleep_time > 0){
-                av_usleep(sleep_time);
+
+        if(last_time != -1){
+            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1000){
+                av_usleep(100);
             }
         }
+
+        std::lock_guard<std::mutex> lock(mtx2);
+        {
+            Writer::write_packets(m_ofmt_ctx, enc_pkt);
+        }
+
+        av_log(nullptr, AV_LOG_INFO, "encode one video packet: %dms.\n", (Timer::getCurrentTime() - last_time) / 1000);
         last_time = Timer::getCurrentTime();
+
+
+        // av_usleep(10000);
+//        if(last_time != -1) {
+//
+//            //目标是睡: 理论上播一帧的时间: 1000 / 30 * 1000 us - (Timer::getCurrentTime() - last_time)
+//            //不妨尝试每1ms检查是否到达33.333ms
+////            int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12400 - (Timer::getCurrentTime() - last_time));
+////            //int64_t sleep_time = (1000 / framerate * 1000) - (Timer::getCurrentTime() - last_time);
+////            if(sleep_time > 0){
+////                av_usleep(sleep_time);
+////            }
+//
+//
+//        }
+//        last_time = Timer::getCurrentTime();
     }
 
     av_packet_free(&enc_pkt);
@@ -712,7 +736,7 @@ int Encoder::encode_video_rtmp(AVFrame *frame, double &count_video, int64_t &las
 
 
 int Encoder::encode_audio_rtmp(AVFrame *frame, double &count_audio, int64_t& last_time) {
-    //int64_t func_time = Timer::getCurrentTime();
+    int64_t func_time = Timer::getCurrentTime();
     int ret;
     int stream_index = 1;
     AVFrame *encode_frame = frame;
@@ -756,18 +780,33 @@ int Encoder::encode_audio_rtmp(AVFrame *frame, double &count_audio, int64_t& las
 //            }
 //        }
 
-
-        Writer::write_packets(m_ofmt_ctx, enc_pkt);
-        //av_log(nullptr, AV_LOG_INFO, "encode one packet: %dms.\n", (Timer::getCurrentTime() - func_time) / 1000);
-        //av_usleep(500);
-        if(last_time != -1) {
-            //int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12500 - (Timer::getCurrentTime() - last_time));
-            int64_t sleep_time =(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000) - 10200 - (Timer::getCurrentTime() - last_time);
-            if(sleep_time > 0){
-                av_usleep(sleep_time);
+        if(last_time != -1){
+            uint64_t sleep_time = Timer::getCurrentTime();
+            while(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000 - (Timer::getCurrentTime() - last_time) > 500){
+                av_usleep(100);
             }
         }
+
+
+        {
+            std::lock_guard<std::mutex> lock(mtx2);
+            Writer::write_packets(m_ofmt_ctx, enc_pkt);
+        }
+
+        av_log(nullptr, AV_LOG_INFO, "encode one audio packet: %dms.\n", (Timer::getCurrentTime() - last_time) / 1000);
         last_time = Timer::getCurrentTime();
+        //av_usleep(500);
+//        if(last_time != -1) {
+//
+//            //目标是睡: 理论上播一帧的时间: audio_enc_ctx->frame_size * 1000 / 44100 * 1000 us - (Timer::getCurrentTime() - last_time)
+//            //不妨尝试每1ms检查是否到达33.333ms
+//            //int64_t sleep_time = (1000 / framerate * 1000 + 10000 - 12500 - (Timer::getCurrentTime() - last_time));
+//            int64_t sleep_time =(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000) - 10200 - (Timer::getCurrentTime() - last_time);
+//            if(sleep_time > 0){
+//                av_usleep(sleep_time);
+//            }
+//        }
+//        last_time = Timer::getCurrentTime();
 
     }
 
