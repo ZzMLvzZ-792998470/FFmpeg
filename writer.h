@@ -9,7 +9,6 @@ extern "C" {
 }
 
 #include <string>
-#include <memory>
 #include <mutex>
 
 

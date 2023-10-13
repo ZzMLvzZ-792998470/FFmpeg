@@ -36,7 +36,7 @@ public:
     //丢帧解码
     int decode_high2low();
 
-    //设置解码队列缓存
+    //设置视频解码队列缓存
     void set_video_queue_cache(int& cache_size);
 
     //获得video_dec_ctx
@@ -53,7 +53,6 @@ public:
 
 
     int test_decode();
-
 
     int test_decode_only_video(int& video_over);
 
@@ -91,9 +90,6 @@ public:
 private:
     AVFormatContext *ifmt_ctx;
 
-//    int set_framerate;
-//    int real_framerate;
-
     double set_framerate;
     double real_framerate;
 
@@ -111,7 +107,6 @@ private:
     std::deque<AVFrame *> audio_queue = {};
 
     std::mutex m_mtx;
-
 };
 
 

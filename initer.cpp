@@ -227,17 +227,40 @@ AVFormatContext* IniterO::get_fmt_ctx() {
 }
 
 
+int IniterO::ofmt_create_stream(AVCodecContext *enc_ctx) {
+    int ret;
+    if(enc_ctx == nullptr){
+        av_log(nullptr, AV_LOG_ERROR, "enc_ctx = nullptr.\n");
+        return -1;
+    }
 
-void IniterO::print_ofmt_info() {
+    AVStream *out_stream = avformat_new_stream(ofmt_ctx, nullptr);
+    if (!out_stream) {
+        av_log(nullptr, AV_LOG_ERROR, "Failed allocating output stream\n");
+        return AVERROR_UNKNOWN;
+    }
 
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+    ret = avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
+    if (ret < 0) {
+        av_log(nullptr, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream #%u\n",
+               enc_ctx->codec_type == AVMEDIA_TYPE_VIDEO ? 0 : (int)(std::string(ofmt_ctx->url).substr(0, 3) != "rtp"));
+        return ret;
+    }
+
+    return 0;
+}
+
+
+void IniterO::ofmt_print_info() {
     av_dump_format(ofmt_ctx, 0, filename.c_str(), 1);
 }
 
 
 int IniterO::ofmt_io_open() {
     int ret;
-
-
 
     if (!(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ofmt_ctx->pb, filename.c_str(), AVIO_FLAG_WRITE);
@@ -247,9 +270,6 @@ int IniterO::ofmt_io_open() {
         }
 
     }
-
-
-
 
     return ret;
 }

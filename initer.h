@@ -105,8 +105,11 @@ public:
     //获取ofmt_ctx
     AVFormatContext* get_fmt_ctx() override;
 
+    //生成ofmt流
+    int ofmt_create_stream(AVCodecContext* enc_ctx);
+
     //打印信息
-    void print_ofmt_info();
+    void ofmt_print_info();
 
     //打开输出文件io
     int ofmt_io_open();

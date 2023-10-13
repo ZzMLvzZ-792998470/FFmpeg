@@ -39,14 +39,14 @@ int main() {
      * */
 
 
-    std::string output_file0 = "rtmp://localhost:1935/live/livestream";
-    // std::string output_file0 = "output.mp4";
-     // std::string output_file0 = "rtsp://localhost:8554/live/livestream";
+     std::string output_file0 = "rtmp://localhost:1935/live/livestream";
+     //std::string output_file0 = "output.mp4";
+     //std::string output_file0 = "rtsp://localhost:8554/live/livestream";
 //    std::string output_file0 = "rtp://127.0.0.1:65564";
 //    std::string output_file1 = "rtp://127.0.0.1:65562";
 
      output_files.push_back(output_file0);
-     //output_files.push_back(output_file1);
+    // output_files.push_back(output_file1);
 
 
 
