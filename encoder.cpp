@@ -17,11 +17,12 @@ Encoder::~Encoder() {
 }
 
 
-int Encoder::init_video_encoder() {
+int Encoder::init_video_encoder(AVFormatContext *ofmt_ctx) {
     int ret;
 
     AVCodecContext *enc_ctx;
     const AVCodec *encoder = avcodec_find_encoder_by_name("libx264");
+    //const AVCodec *encoder = avcodec_find_encoder_by_name("h264_nvenc");
 
     if (!encoder) {
         av_log(nullptr, AV_LOG_FATAL, "Necessary encoder not found\n");
@@ -41,14 +42,14 @@ int Encoder::init_video_encoder() {
 
     enc_ctx->max_b_frames = 0;
     enc_ctx->gop_size = 1;
-//
-//
-//            enc_ctx->bit_rate = 400000;
-//            enc_ctx->bit_rate_tolerance = 100000;
-//            enc_ctx->rc_min_rate = 350000;
-//            enc_ctx->rc_max_rate = 450000;
-//            enc_ctx->rc_buffer_size = (int)enc_ctx->bit_rate;
-//            enc_ctx->rc_initial_buffer_occupancy = enc_ctx->rc_buffer_size * 3 / 4;
+
+    //硬编码参数设置
+//    enc_ctx->bit_rate = 800000;
+//    enc_ctx->bit_rate_tolerance = 100000;
+//    enc_ctx->rc_min_rate = 650000;
+//    enc_ctx->rc_max_rate = 850000;
+//    enc_ctx->rc_buffer_size = (int)enc_ctx->bit_rate;
+//    enc_ctx->rc_initial_buffer_occupancy = enc_ctx->rc_buffer_size * 3 / 4;
 
 
     /* take first format from list of supported formats */
@@ -70,10 +71,16 @@ int Encoder::init_video_encoder() {
 
 
     av_opt_set(video_enc_ctx->priv_data, "preset", "ultrafast", 0);
-//            av_opt_set(video_enc_ctx->priv_data, "tune", "zerolatency", 0);
-//            av_opt_set(video_enc_ctx->priv_data, "profile", "main", 0);
+// av_opt_set(video_enc_ctx->priv_data, "tune", "zerolatency", 0);
+// av_opt_set(video_enc_ctx->priv_data, "profile", "main", 0);
 
     time_per_frame_video = 1.0 * 1000 / framerate;
+
+    //enc_ctx->flags = -2143289344;
+
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
 
     ret = avcodec_open2(enc_ctx, encoder, nullptr);
     if (ret < 0) {
@@ -85,7 +92,7 @@ int Encoder::init_video_encoder() {
 }
 
 
-int Encoder::init_audio_encoder() {
+int Encoder::init_audio_encoder(AVFormatContext *ofmt_ctx) {
     int ret;
 
     AVCodecContext *enc_ctx;
@@ -112,6 +119,10 @@ int Encoder::init_audio_encoder() {
     audio_enc_ctx = enc_ctx;
 
     time_per_frame_audio = 1024 * 1.0 * 1000 / audio_enc_ctx->sample_rate;
+
+    //enc_ctx->flags = 4194304;
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
     ret = avcodec_open2(enc_ctx, encoder, nullptr);
     if (ret < 0) {
@@ -164,10 +175,7 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
         }
 
 
-
-
         distributer->distribute(enc_pkt);
-
         // distributer->distribute(av_packet_clone(enc_pkt));
 
         //Writer::write_packets(ofmt_ctx, enc_pkt);

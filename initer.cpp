@@ -240,8 +240,8 @@ int IniterO::ofmt_create_stream(AVCodecContext *enc_ctx) {
         return AVERROR_UNKNOWN;
     }
 
-    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
-        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+//    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+//        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
     ret = avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
     if (ret < 0) {

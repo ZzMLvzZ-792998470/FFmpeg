@@ -72,16 +72,25 @@ int Transcoder::init_transcoder() {
         decoders[i]->init_decoder();
     }
 
+    bool has_rtmp = false;
+    int rtmp_index = 0;
+    for(i = 0; i < outputNums; i++){
+        if(output_filenames[i].substr(0, 4) == "rtmp"){
+            has_rtmp = true;
+            rtmp_index = (int)i;
+        }
+        IniterOs[i] = IniterO::ptr(new IniterO(output_filenames[i]));
+        IniterOs[i]->init_fmt();
+    }
+
 
     encoders[0] = Encoder::ptr(new Encoder(height, width, framerate, samplerate));
-    encoders[0]->init_video_encoder();
-    encoders[0]->init_audio_encoder();
+    encoders[0]->init_video_encoder(IniterOs[has_rtmp ? rtmp_index : 0]->get_fmt_ctx());
+    encoders[0]->init_audio_encoder(IniterOs[has_rtmp ? rtmp_index : 0]->get_fmt_ctx());
 
 
     int encoder_type;
     bool video_type = true;
-   // int first = 1;
-
     for(i = 0; i < outputNums; i++){
         if(output_filenames[i].substr(0, 3) != "rtp"){
             encoder_type = 0;
@@ -89,10 +98,6 @@ int Transcoder::init_transcoder() {
             encoder_type = video_type ? 1 : 2;
             video_type = (!video_type);
         }
-
-        IniterOs[i] = IniterO::ptr(new IniterO(output_filenames[i]));
-        IniterOs[i]->init_fmt();
-
 
 
         if(encoder_type == 0){
@@ -108,11 +113,10 @@ int Transcoder::init_transcoder() {
         IniterOs[i]->ofmt_print_info();
 
         ofmt_ctxs[i] = IniterOs[i]->get_fmt_ctx();
-//        if(encoder_type != 0){
-//            if(encoder_type == 1) packets_over[i][1] = 1;
-//            else packets_over[i][0] = 1;
-//        }
+
     }
+
+
 
     distributer = Distributer::ptr(new Distributer(ofmt_ctxs));
 
@@ -225,7 +229,6 @@ int Transcoder::reencode() {
 
 
     std::vector<int> works(inputNums, 1);
-
 
     /*
      * 修改逻辑 在这里直接开启解码线程、音视频编码线程（统一的方法）

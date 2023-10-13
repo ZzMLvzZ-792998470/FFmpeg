@@ -33,6 +33,7 @@ int Distributer::distribute(AVPacket *pkt) {
 
         } else Thread thread_writePacket(&Writer::write_packets, ofmt_ctxs[i], av_packet_clone(pkt));
     }
+    //Writer::write_packets(ofmt_ctxs[0], av_packet_clone(pkt));
 
    // av_packet_free(&pkt);
     return 0;

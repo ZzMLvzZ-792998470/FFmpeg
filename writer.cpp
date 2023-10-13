@@ -28,7 +28,7 @@ int Writer::write_packets(AVFormatContext* ofmt_ctx, AVPacket *enc_pkt) {
         av_log(nullptr, AV_LOG_ERROR, "Error occurred when during(write_frame) output file\n");
         return ret;
     }
-    av_packet_free(&enc_pkt);
+
     return 0;
 }
 

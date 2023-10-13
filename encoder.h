@@ -26,10 +26,10 @@ public:
     ~Encoder();
 
     //初始化视频编码器
-    int init_video_encoder();
+    int init_video_encoder(AVFormatContext* ofmt_ctx);
 
     //初始化音频编码器
-    int init_audio_encoder();
+    int init_audio_encoder(AVFormatContext* ofmt_ctx);
 
     //编码视频帧
     int encode_video(Distributer::ptr distributer, AVFrame* frame, int64_t& last_time);
