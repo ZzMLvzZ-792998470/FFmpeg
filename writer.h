@@ -25,6 +25,9 @@ public:
     //写输出文件尾
     static int write_tail(AVFormatContext* ofmt_ctx);
 
+    //无排列写输出包
+    static int write_packets_no_interleaved(AVFormatContext* ofmt_ctx, AVPacket *enc_pkt);
+
 private:
     static std::mutex mtx;
 };

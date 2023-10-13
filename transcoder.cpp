@@ -39,32 +39,17 @@ Transcoder::Transcoder(std::vector<std::string>& output_filenames, int width, in
 
 
 Transcoder::~Transcoder() {
-
     swr_free(&swr_ctx);
     av_audio_fifo_free(fifo);
 
-   while(IniterIs.size() > 0 ){
-     //  decoders.pop_back();
-       IniterIs.pop_back();
-   }
+    while(!IniterIs.empty()) IniterIs.pop_back();
 
-   while(decoders.size() > 0){
-       decoders.pop_back();
-   }
+    while(!decoders.empty()) decoders.pop_back();
 
+    while(!IniterOs.empty()) IniterOs.pop_back();
 
-   while(IniterOs.size() > 0){
-       IniterOs.pop_back();
-   }
+    while(!encoders.empty()) encoders.pop_back();
 
-   while(encoders.size() > 0){
-       encoders.pop_back();
-   }
-
-//   while(outputNums--){
-//       IniterOs.pop_back();
-//       encoders.pop_back();
-//   }
 }
 
 
@@ -75,6 +60,9 @@ int Transcoder::init_transcoder() {
     IniterOs.resize(outputNums);
     decoders.resize(inputNums);
     encoders.resize(outputNums);
+
+    packets_over.resize(outputNums, std::vector<int>(2, 0));
+
     for(i = 0; i < inputNums; i++){
         IniterIs[i] = IniterI::ptr(new IniterI(input_filenames[i]));
         IniterIs[i]->init_fmt();
@@ -82,22 +70,42 @@ int Transcoder::init_transcoder() {
         decoders[i]->init_decoder();
     }
 
+    int encoder_type;
+    bool video_type = true;
+
     for(i = 0; i < outputNums; i++){
+        if(output_filenames[i].substr(0, 3) != "rtp"){
+            encoder_type = 0;
+        } else{
+            encoder_type = video_type ? 1 : 2;
+            video_type = (!video_type);
+        }
+
         IniterOs[i] = IniterO::ptr(new IniterO(output_filenames[i]));
         IniterOs[i]->init_fmt();
 
-        encoders[i] = Encoder::ptr(new Encoder(height, width, framerate, samplerate));
-        encoders[i]->init_encoder(IniterOs[i]->get_fmt_ctx());
+        encoders[i] = Encoder::ptr(new Encoder(height, width, framerate, samplerate, encoder_type));
+
+        encoders[i]->init_encoder(IniterOs[i]->get_fmt_ctx(), encoder_type);
 
         IniterOs[i]->ofmt_io_open();
         IniterOs[i]->print_ofmt_info();
+
+        if(encoder_type != 0){
+            if(encoder_type == 1) packets_over[i][1] = 1;
+            else packets_over[i][0] = 1;
+        }
     }
 
     //init swr_ctx and audio_fifo
+    for(i = 0; i < outputNums; i++){
+        if(encoders[i]->get_encoder_type() == 0 || encoders[i]->get_encoder_type() == 2) break;
+    }
+
     swr_ctx = swr_alloc_set_opts(nullptr,
-                                 encoders[0]->get_audio_enc_ctx()->channel_layout,
-                                 encoders[0]->get_audio_enc_ctx()->sample_fmt,
-                                 encoders[0]->get_audio_enc_ctx()->sample_rate,
+                                 encoders[i]->get_audio_enc_ctx()->channel_layout,
+                                 encoders[i]->get_audio_enc_ctx()->sample_fmt,
+                                 encoders[i]->get_audio_enc_ctx()->sample_rate,
                                  decoders[0]->get_audio_dec_ctx()->channel_layout,
                                  decoders[0]->get_audio_dec_ctx()->sample_fmt,
                                  decoders[0]->get_audio_dec_ctx()->sample_rate,
@@ -105,16 +113,18 @@ int Transcoder::init_transcoder() {
                                  nullptr);
 
     ret = swr_init(swr_ctx);
-    if(ret < 0){
+    if (ret < 0) {
         av_log(nullptr, AV_LOG_ERROR, "swr_ctx init failed.\n");
         return -1;
     }
 
-    fifo = av_audio_fifo_alloc(encoders[0]->get_audio_enc_ctx()->sample_fmt, encoders[0]->get_audio_enc_ctx()->channels, 1);
-    if(!fifo){
+    fifo = av_audio_fifo_alloc(encoders[i]->get_audio_enc_ctx()->sample_fmt,
+                               encoders[i]->get_audio_enc_ctx()->channels, 1);
+    if (!fifo) {
         av_log(nullptr, AV_LOG_ERROR, "fifo wrong.\n");
         return -1;
     }
+
 
     return 0;
 }
@@ -195,27 +205,85 @@ int Transcoder::init_local_device_transcoder() {
 
 int Transcoder::reencode() {
     int ret;
+    unsigned int i;
 
-    Writer::write_header(IniterOs[0]->get_fmt_ctx());
-
-
-    if(output_filenames[0].substr(0, 4) == "rtmp"){
-        ret = mp4_files2rtmp();
+    for(i = 0; i < outputNums; i++){
+        Writer::write_header(IniterOs[i]->get_fmt_ctx());
     }
 
-    if(output_filenames[0].substr(output_filenames[0].size() - 4, 4) == ".mp4"){
-        ret = mp4files2mp4();
+    /*
+     * 修改逻辑 在这里直接开启解码线程、音视频编码线程（统一的方法）
+     *
+     * */
+
+
+    std::vector<int> works(inputNums, 1);
+
+    for(i = 0; i < inputNums; i++){
+        Thread thread_decode(&Decoder::decode, decoders[i], std::ref(works[i]));
+        thread_decode.detach();
     }
 
 
-    if(output_filenames[0].substr(0, 4) == "rtsp"){
-        ret = mp4_files2rtsp();
+    //开启视频处理线程
+
+
+
+
+
+    ///开启音频处理线程
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//    for(i = 0; i < outputNums; i++){
+//        if(output_filenames[i].substr(0, 3) == "rtp"){
+//            Thread thread_rtp(&Transcoder::mp4_files2rtp, this, i);
+//        } else if(output_filenames[i].substr(0, 4) == "rtmp"){
+//            Thread thread_rtmp(&Transcoder::mp4_files2rtmp, this, i);
+//           // thread_rtmp.detach();
+//        } else if(output_filenames[i].substr(0, 4) == "rtsp"){
+//            Thread thread_rtsp(&Transcoder::mp4_files2rtsp, this, i);
+//            //thread_rtsp.detach();
+//        } else if(output_filenames[i].substr(output_filenames[i].size() - 4, 4) == ".mp4"){
+//            Thread thread_mp4(&Transcoder::mp4files2mp4, this, i);
+//            thread_mp4.detach();
+//        }
+//    }
+
+
+
+    int all_packet_over = 0;
+    std::vector<int> first_time(outputNums, 1);
+    while(true){
+        all_packet_over = 1;
+        for(i = 0; i < outputNums; i++){
+            if(packets_over[i][0] == 1 && packets_over[i][1] == 1 && first_time[i] == 1){
+                first_time[i] = 0;
+                Writer::write_tail(IniterOs[i]->get_fmt_ctx());
+            }
+            all_packet_over = (all_packet_over == 1 && (packets_over[i][0] == 1 && packets_over[i][1] == 1));
+        }
+
+        if(all_packet_over) break;
     }
-
-
-    Writer::write_tail(IniterOs[0]->get_fmt_ctx());
 
     return 0;
+
 }
 
 
@@ -239,8 +307,6 @@ int Transcoder::reencode_local_device() {
     }
 
 
-
-
     Writer::write_tail(IniterOs[0]->get_fmt_ctx());
     return 0;
 
@@ -250,7 +316,7 @@ int Transcoder::reencode_local_device() {
 
 
 
-int Transcoder::mp4files2mp4() {
+int Transcoder::mp4files2mp4(int encoder_index) {
     unsigned int i;
     int ret;
 
@@ -261,9 +327,9 @@ int Transcoder::mp4files2mp4() {
     }
 
 
-    Thread thread_video(&Transcoder::mp4_video_separate, this, std::ref(works));
+    Thread thread_video(&Transcoder::mp4_video_separate, this, std::ref(works), std::ref(encoder_index));
 
-    Thread thread_audio(&Transcoder::mp4_audio_separate, this, std::ref(works));
+    Thread thread_audio(&Transcoder::mp4_audio_separate, this, std::ref(works), std::ref(encoder_index));
 
 
     return 0;
@@ -280,10 +346,10 @@ int Transcoder::encode_files_mp4_threads() {
     }
 
     //新开一个线程编码视频
-    Thread thread_video(&Transcoder::mp4_video_separate, this, std::ref(works));
-
-    //新开一个线程编码音频
-    Thread thread_audio(&Transcoder::mp4_audio_separate, this, std::ref(works));
+//    Thread thread_video(&Transcoder::mp4_video_separate, this, std::ref(works));
+//
+//    //新开一个线程编码音频
+//    Thread thread_audio(&Transcoder::mp4_audio_separate, this, std::ref(works));
 
     return 0;
 
@@ -381,7 +447,7 @@ int Transcoder::device2rtmp() {
 }
 
 
-int Transcoder::mp4_files2rtmp() {
+int Transcoder::mp4_files2rtmp(int encoder_index) {
     unsigned int i;
     int ret;
 
@@ -391,9 +457,9 @@ int Transcoder::mp4_files2rtmp() {
         thread_decode.detach();
     }
 
-    Thread thread_rtmp_video(&Transcoder::rtmp_video_perFrameSeparate, this, std::ref(works));
+    Thread thread_rtmp_video(&Transcoder::rtmp_video_perFrameSeparate, this, std::ref(works), std::ref(encoder_index));
 
-    Thread thread_rtmp_audio(&Transcoder::rtmp_audio_perFrameSeparate, this, std::ref(works));
+    Thread thread_rtmp_audio(&Transcoder::rtmp_audio_perFrameSeparate, this, std::ref(works), std::ref(encoder_index));
 
 //    Thread thread_encode_video(&Transcoder::rtmp_video_perSecondSeparate, this, std::ref(works));
 //
@@ -403,7 +469,7 @@ int Transcoder::mp4_files2rtmp() {
 }
 
 
-int Transcoder::mp4_files2rtsp() {
+int Transcoder::mp4_files2rtsp(int encoder_index) {
     unsigned int i;
     int ret;
 
@@ -414,8 +480,8 @@ int Transcoder::mp4_files2rtsp() {
         thread_decode.detach();
     }
 
-    double count_video = 0.0;
-    double count_audio = 0.0;
+//    double count_video = 0.0;
+//    double count_audio = 0.0;
 
 
 //    Thread thread_encode_video(&Transcoder::encode_thread_video_rtsp_no_separate, this, std::ref(works), std::ref(count_video));
@@ -424,9 +490,9 @@ int Transcoder::mp4_files2rtsp() {
 
 
 
-    Thread thread_encode_video(&Transcoder::rtsp_video_perFrameSeparate, this, std::ref(works));
+    Thread thread_encode_video(&Transcoder::rtsp_video_perFrameSeparate, this, std::ref(works), std::ref(encoder_index));
 
-    Thread thread_encode_audio(&Transcoder::rtsp_audio_perFrameSeparate, this, std::ref(works));
+    Thread thread_encode_audio(&Transcoder::rtsp_audio_perFrameSeparate, this, std::ref(works), std::ref(encoder_index));
 
 
 //    Thread thread_encode_video(&Transcoder::rtmp_video_perSecondSeparate, this, std::ref(works));
@@ -436,6 +502,27 @@ int Transcoder::mp4_files2rtsp() {
     return 0;
 }
 
+
+
+
+int Transcoder::mp4_files2rtp(int encoder_index) {
+    unsigned int i;
+    int ret;
+
+    std::vector<int> works(inputNums, 1);
+    for(i = 0; i < inputNums; i++){
+        Thread thread_decode(&Decoder::decode, decoders[i], std::ref(works[i]));
+        thread_decode.detach();
+    }
+
+
+//    Thread thread_video(&Transcoder::rtp_video_perFrameSeparate, this, std::ref(works), std::ref(encoder_index));
+//
+//
+//    Thread thread_audio(&Transcoder::rtp_audio_perFrameSeparate, this, std::ref(works), std::ref(encoder_index));
+
+
+}
 
 
 
@@ -619,7 +706,7 @@ int Transcoder::encode_files_as_mp4() {
 
 
 
-int Transcoder::mp4_video_separate(std::vector<int>& works) {
+int Transcoder::mp4_video_separate(std::vector<int>& works, int& encode_index) {
     unsigned int i;
     bool video_finish;
     std::vector<AVFrame *> last_frames(inputNums);
@@ -655,9 +742,11 @@ int Transcoder::mp4_video_separate(std::vector<int>& works) {
             }
         }
 
-        encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
+        encoders[encode_index]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
+        //encoders[0]->encode_video_mp4(Utils::merge_way(width, height, merge_frames));
     }
-    encoders[0]->encode_video_mp4(nullptr);
+    encoders[encode_index]->encode_video_mp4(nullptr);
+    //encoders[0]->encode_video_mp4(nullptr);
     for(int i = 0; i < inputNums; i++){
         av_frame_free(&last_frames[i]);
         av_frame_free(&merge_frames[i]);
@@ -667,10 +756,11 @@ int Transcoder::mp4_video_separate(std::vector<int>& works) {
         merge_frames.pop_back();
     }
 
+    packets_over[encode_index][0] = 1;
     return 0;
 }
 
-int Transcoder::mp4_audio_separate(std::vector<int>& works) {
+int Transcoder::mp4_audio_separate(std::vector<int>& works, int& encode_index) {
     int ret;
     unsigned int i;
     bool audio_finish;
@@ -689,9 +779,9 @@ int Transcoder::mp4_audio_separate(std::vector<int>& works) {
                     if(!decoders[i]->get_audio_queue().empty()) {
                         Utils::write_to_fifo(fifo, swr_ctx,
                                              av_frame_clone(decoders[i]->get_audio_queue_front()),
-                                             encoders[i]->get_audio_enc_ctx()->channels,
-                                             encoders[i]->get_audio_enc_ctx()->sample_fmt,
-                                             encoders[i]->get_audio_enc_ctx()->sample_rate);
+                                             encoders[encode_index]->get_audio_enc_ctx()->channels,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_fmt,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_rate);
 
                         decoders[i]->pop_audio();
                     }
@@ -705,16 +795,18 @@ int Transcoder::mp4_audio_separate(std::vector<int>& works) {
 
         all_audio_finish = works[0] == 0 && decoders[0]->get_audio_queue().empty();
         while(av_audio_fifo_size(fifo) > 0){
-            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
+            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[encode_index]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
 
-                ret = encoders[0]->encode_audio(audio_frame);
+                ret = encoders[encode_index]->encode_audio(audio_frame);
 
                 if(ret < 0) return -1;
             } else break;
         }
     }
-    encoders[0]->encode_audio(nullptr);
+    encoders[encode_index]->encode_audio(nullptr);
+
+    packets_over[encode_index][1] = 1;
     return 0;
 }
 
@@ -1542,7 +1634,7 @@ int Transcoder::encode_thread_audio_rtmp_new(std::vector<int> &works, double &co
 
 
 
-int Transcoder::rtmp_video_perFrameSeparate(std::vector<int> &works) {
+int Transcoder::rtmp_video_perFrameSeparate(std::vector<int> &works, int& encode_index) {
     unsigned int i;
     bool video_finish;
 
@@ -1565,11 +1657,11 @@ int Transcoder::rtmp_video_perFrameSeparate(std::vector<int> &works) {
         for(i = 0; i < inputNums; i++){
             if(!decoders[i]->get_video_queue().empty()){
                 av_frame_free(&last_frames[i]);
-                //last_frames[i] = av_frame_clone(decoders[i]->get_video_queue().front());
                 last_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
+
                 av_frame_free(&merge_frames[i]);
                 merge_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
-                //merge_frames[i] = av_frame_clone(decoders[i]->get_video_queue().front());
+
 
                 decoders[i]->pop_video();
 
@@ -1579,13 +1671,13 @@ int Transcoder::rtmp_video_perFrameSeparate(std::vector<int> &works) {
             }
         }
 
-        encoders[0]->encode_video_rtmp(Utils::merge_way(width, height, merge_frames), last_time);
+        encoders[encode_index]->encode_video_rtmp(Utils::merge_way(width, height, merge_frames), last_time);
         {
             std::unique_lock<std::mutex> lock(mtx);
             cond.notify_all();
         }
     }
-    encoders[0]->encode_video_rtmp(nullptr, last_time);
+    encoders[encode_index]->encode_video_rtmp(nullptr, last_time);
 
     for(int i = 0; i < inputNums; i++){
         av_frame_free(&last_frames[i]);
@@ -1596,11 +1688,12 @@ int Transcoder::rtmp_video_perFrameSeparate(std::vector<int> &works) {
         merge_frames.pop_back();
     }
 
+    packets_over[encode_index][0] = 1;
     return 0;
 }
 
 
-int Transcoder::rtmp_audio_perFrameSeparate(std::vector<int> &works) {
+int Transcoder::rtmp_audio_perFrameSeparate(std::vector<int> &works, int& encode_index) {
     int ret;
     unsigned int i;
 
@@ -1624,11 +1717,10 @@ int Transcoder::rtmp_audio_perFrameSeparate(std::vector<int> &works) {
                 if(i == 0){
                     if(!decoders[i]->get_audio_queue().empty()) {
                         Utils::write_to_fifo(fifo, swr_ctx,
-                                //av_frame_clone(decoders[i]->get_audio_queue().front()),
                                              av_frame_clone(decoders[i]->get_audio_queue_front()),
-                                             encoders[i]->get_audio_enc_ctx()->channels,
-                                             encoders[i]->get_audio_enc_ctx()->sample_fmt,
-                                             encoders[i]->get_audio_enc_ctx()->sample_rate);
+                                             encoders[encode_index]->get_audio_enc_ctx()->channels,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_fmt,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_rate);
 
                         decoders[i]->pop_audio();
                     }
@@ -1643,16 +1735,17 @@ int Transcoder::rtmp_audio_perFrameSeparate(std::vector<int> &works) {
 
         all_audio_finish = works[0] == 0 && decoders[0]->get_audio_queue().empty();
 
-        if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
-            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
+        if(av_audio_fifo_size(fifo) >= encoders[encode_index]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
+            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[encode_index]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                ret = encoders[0]->encode_audio_rtmp(audio_frame, last_time);
+                ret = encoders[encode_index]->encode_audio_rtmp(audio_frame, last_time);
                 if(ret < 0) return -1;
             } else break;
         }
 
     }
-    encoders[0]->encode_audio_rtmp(nullptr, last_time);
+    encoders[encode_index]->encode_audio_rtmp(nullptr, last_time);
+    packets_over[encode_index][1] = 1;
     return 0;
 
 
@@ -2011,7 +2104,7 @@ int Transcoder::rtmp_audio_silentFrameSeparate(int &time) {
 
 
 
-int Transcoder::rtsp_video_perFrameSeparate(std::vector<int> &works) {
+int Transcoder::rtsp_video_perFrameSeparate(std::vector<int> &works, int& encode_index) {
     unsigned int i;
     bool video_finish;
 
@@ -2036,9 +2129,8 @@ int Transcoder::rtsp_video_perFrameSeparate(std::vector<int> &works) {
             if(!decoders[i]->get_video_queue().empty()){
                 av_frame_free(&last_frames[i]);
                 last_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
-                //last_frames[i] = av_frame_clone(decoders[i]->get_video_queue().front());
+
                 av_frame_free(&merge_frames[i]);
-                //merge_frames[i] = av_frame_clone(decoders[i]->get_video_queue().front());
                 merge_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
                 decoders[i]->pop_video();
 
@@ -2048,14 +2140,14 @@ int Transcoder::rtsp_video_perFrameSeparate(std::vector<int> &works) {
             }
         }
 
-        encoders[0]->encode_video_rtsp(Utils::merge_way(width, height, merge_frames), last_time);
+        encoders[encode_index]->encode_video_rtsp(Utils::merge_way(width, height, merge_frames), last_time);
 
         {
             std::unique_lock<std::mutex> lock(mtx);
             cond.notify_all();
         }
     }
-    encoders[0]->encode_video_rtsp(nullptr, last_time);
+    encoders[encode_index]->encode_video_rtsp(nullptr, last_time);
 
     for(int i = 0; i < inputNums; i++){
         av_frame_free(&last_frames[i]);
@@ -2066,11 +2158,12 @@ int Transcoder::rtsp_video_perFrameSeparate(std::vector<int> &works) {
         merge_frames.pop_back();
     }
 
+    packets_over[encode_index][0] = 1;
     return 0;
 }
 
 
-int Transcoder::rtsp_audio_perFrameSeparate(std::vector<int>& works){
+int Transcoder::rtsp_audio_perFrameSeparate(std::vector<int>& works, int& encode_index){
     int ret;
     unsigned int i;
 
@@ -2095,11 +2188,10 @@ int Transcoder::rtsp_audio_perFrameSeparate(std::vector<int>& works){
                 if(i == 0){
                     if(!decoders[i]->get_audio_queue().empty()) {
                         Utils::write_to_fifo(fifo, swr_ctx,
-                                             //av_frame_clone(decoders[i]->get_audio_queue().front()),
                                              av_frame_clone(decoders[i]->get_audio_queue_front()),
-                                             encoders[i]->get_audio_enc_ctx()->channels,
-                                             encoders[i]->get_audio_enc_ctx()->sample_fmt,
-                                             encoders[i]->get_audio_enc_ctx()->sample_rate);
+                                             encoders[encode_index]->get_audio_enc_ctx()->channels,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_fmt,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_rate);
 
                         decoders[i]->pop_audio();
                     }
@@ -2114,16 +2206,277 @@ int Transcoder::rtsp_audio_perFrameSeparate(std::vector<int>& works){
 
         all_audio_finish = works[0] == 0 && decoders[0]->get_audio_queue().empty();
 
-        if(av_audio_fifo_size(fifo) >= encoders[0]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
-            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[0]->get_audio_enc_ctx(), all_audio_finish);
+        if(av_audio_fifo_size(fifo) >= encoders[encode_index]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
+            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[encode_index]->get_audio_enc_ctx(), all_audio_finish);
             if(audio_frame){
-                ret = encoders[0]->encode_audio_rtsp(audio_frame, last_time);
+                ret = encoders[encode_index]->encode_audio_rtsp(audio_frame, last_time);
                 if(ret < 0) return -1;
             } else break;
         }
 
     }
-    encoders[0]->encode_audio_rtsp(nullptr, last_time);
+    encoders[encode_index]->encode_audio_rtsp(nullptr, last_time);
+
+    packets_over[encode_index][1] = 1;
     return 0;
 }
+
+
+
+
+int Transcoder::rtp_video_perFrameSeparate(std::vector<int> &works, int& encode_index) {
+    int ret;
+    unsigned int i;
+    int64_t last_time = -1;
+
+    bool video_finish;
+
+    std::vector<AVFrame *> last_frames(inputNums);
+    std::vector<AVFrame *> merge_frames(inputNums);
+    for(int i = 0; i < last_frames.size(); i++){
+        last_frames[i] = FrameCreater::create_video_frame();
+        merge_frames[i] = FrameCreater::create_video_frame();
+    }
+
+    while(true){
+        video_finish = true;
+        for(i = 0; i < inputNums; i++){
+            video_finish = video_finish && (decoders[i]->get_video_queue().empty()) && (works[i] == 0);
+        }
+        if(video_finish) break;
+
+
+        for(i = 0; i < inputNums; i++){
+            if(!decoders[i]->get_video_queue().empty()){
+                av_frame_free(&last_frames[i]);
+                last_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
+
+                av_frame_free(&merge_frames[i]);
+                merge_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
+                decoders[i]->pop_video();
+
+            } else{
+                av_frame_free(&merge_frames[i]);
+                merge_frames[i] = av_frame_clone(last_frames[i]);
+            }
+        }
+
+
+        encoders[encode_index]->encode_video_rtp(Utils::merge_way(width, height, merge_frames), last_time);
+        //encoders[0]->encode_video_rtsp(Utils::merge_way(width, height, merge_frames), last_time);
+
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cond.notify_all();
+        }
+    }
+    encoders[encode_index]->encode_video_rtp(nullptr, last_time);
+    //encoders[0]->encode_video_rtsp(nullptr, last_time);
+
+    for(int i = 0; i < inputNums; i++){
+        av_frame_free(&last_frames[i]);
+        av_frame_free(&merge_frames[i]);
+    }
+    while(!last_frames.empty()){
+        last_frames.pop_back();
+        merge_frames.pop_back();
+    }
+
+    return 0;
+
+}
+
+
+
+int Transcoder::rtp_audio_perFrameSeparate(std::vector<int> &works, int& encode_index) {
+    int ret;
+    unsigned int i;
+
+    int64_t last_time = -1;
+    bool audio_finish;
+    bool all_audio_finish;
+    while(true){
+        //判断是否所有音频帧结束
+        audio_finish = true;
+        for(i = 0; i < inputNums; i++){
+            audio_finish = audio_finish && (decoders[i]->get_audio_queue().empty()) && (works[i] == 0);
+        }
+        if(audio_finish && av_audio_fifo_size(fifo) <= 0) break;
+
+
+        //使用计数是为了保证fifo中存足够的音频数据
+        int time = 2;
+        while(time--){
+            for(i = 0; i < inputNums; i++){
+                if(i == 0){
+                    if(!decoders[i]->get_audio_queue().empty()) {
+                        Utils::write_to_fifo(fifo, swr_ctx,
+                                             av_frame_clone(decoders[i]->get_audio_queue_front()),
+                                             encoders[encode_index]->get_audio_enc_ctx()->channels,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_fmt,
+                                             encoders[encode_index]->get_audio_enc_ctx()->sample_rate);
+
+                        decoders[i]->pop_audio();
+                    }
+                } else{
+                    //因为暂时只用到了第一个视频的音频 所以其余音频帧需要被释放
+                    while(!decoders[i]->get_audio_queue().empty()){
+                        decoders[i]->pop_audio();
+                    }
+                }
+            }
+        }
+
+        all_audio_finish = works[0] == 0 && decoders[0]->get_audio_queue().empty();
+
+        if(av_audio_fifo_size(fifo) >= encoders[1]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
+            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[encode_index]->get_audio_enc_ctx(), all_audio_finish);
+            if(audio_frame){
+                //ret = encoders[1]->encode_audio_rtsp(audio_frame, last_time);
+                ret = encoders[encode_index]->encode_audio_rtp(audio_frame, last_time);
+                if(ret < 0) return -1;
+            } else break;
+        }
+
+    }
+    encoders[encode_index]->encode_audio_rtp(nullptr, last_time);
+    //encoders[1]->encode_audio_rtsp(nullptr, last_time);
+    return 0;
+}
+
+
+
+int Transcoder::reencode_video(std::vector<int> &works) {
+    unsigned int i;
+    bool video_finish;
+
+    int64_t last_time = -1;
+
+    std::vector<AVFrame *> last_frames(inputNums);
+    std::vector<AVFrame *> merge_frames(inputNums);
+    for(int i = 0; i < last_frames.size(); i++){
+        last_frames[i] = FrameCreater::create_video_frame();
+        merge_frames[i] = FrameCreater::create_video_frame();
+    }
+
+    while(true){
+        video_finish = true;
+        for(i = 0; i < inputNums; i++){
+            video_finish = video_finish && (decoders[i]->get_video_queue().empty()) && (works[i] == 0);
+        }
+        if(video_finish) break;
+
+
+        for(i = 0; i < inputNums; i++){
+            if(!decoders[i]->get_video_queue().empty()){
+                av_frame_free(&last_frames[i]);
+                last_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
+
+                av_frame_free(&merge_frames[i]);
+                merge_frames[i] = av_frame_clone(decoders[i]->get_video_queue_front());
+                decoders[i]->pop_video();
+
+            } else{
+                av_frame_free(&merge_frames[i]);
+                merge_frames[i] = av_frame_clone(last_frames[i]);
+            }
+        }
+
+        //encoders[encode_index]->encode_video_rtsp(Utils::merge_way(width, height, merge_frames), last_time);
+
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cond.notify_all();
+        }
+    }
+
+    //encoders[encode_index]->encode_video_rtsp(nullptr, last_time);
+
+    for(int i = 0; i < inputNums; i++){
+        av_frame_free(&last_frames[i]);
+        av_frame_free(&merge_frames[i]);
+    }
+    while(!last_frames.empty()){
+        last_frames.pop_back();
+        merge_frames.pop_back();
+    }
+
+    //packets_over[encode_index][0] = 1;
+    return 0;
+}
+
+
+
+int Transcoder::reencode_audio(std::vector<int> &works){
+    int ret;
+    unsigned int i;
+
+    int64_t last_time = -1;
+    bool audio_finish;
+    bool all_audio_finish;
+
+
+    while(true){
+        //判断是否所有音频帧结束
+        audio_finish = true;
+        for(i = 0; i < inputNums; i++){
+            audio_finish = audio_finish && (decoders[i]->get_audio_queue().empty()) && (works[i] == 0);
+        }
+        if(audio_finish && av_audio_fifo_size(fifo) <= 0) break;
+
+
+        //使用计数是为了保证fifo中存足够的音频数据
+//        int time = 2;
+//        while(time--){
+//            for(i = 0; i < inputNums; i++){
+//                if(i == 0){
+//                    if(!decoders[i]->get_audio_queue().empty()) {
+//                        Utils::write_to_fifo(fifo, swr_ctx,
+//                                             av_frame_clone(decoders[i]->get_audio_queue_front()),
+//                                             encoders[encode_index]->get_audio_enc_ctx()->channels,
+//                                             encoders[encode_index]->get_audio_enc_ctx()->sample_fmt,
+//                                             encoders[encode_index]->get_audio_enc_ctx()->sample_rate);
+//
+//                        decoders[i]->pop_audio();
+//                    }
+//                } else{
+//                    //因为暂时只用到了第一个视频的音频 所以其余音频帧需要被释放
+//                    while(!decoders[i]->get_audio_queue().empty()){
+//                        decoders[i]->pop_audio();
+//                    }
+//                }
+//            }
+//        }
+
+        all_audio_finish = works[0] == 0 && decoders[0]->get_audio_queue().empty();
+
+//        if(av_audio_fifo_size(fifo) >= encoders[encode_index]->get_audio_enc_ctx()->frame_size || (av_audio_fifo_size(fifo) > 0 && all_audio_finish)){
+//            AVFrame *audio_frame = Utils::get_sample_fixed_frame(fifo, encoders[encode_index]->get_audio_enc_ctx(), all_audio_finish);
+//            if(audio_frame){
+//                ret = encoders[encode_index]->encode_audio_rtsp(audio_frame, last_time);
+//                if(ret < 0) return -1;
+//            } else break;
+//        }
+
+    }
+//    encoders[encode_index]->encode_audio_rtsp(nullptr, last_time);
+//
+//    packets_over[encode_index][1] = 1;
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

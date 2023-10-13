@@ -207,4 +207,21 @@ decoder---->deocded_queue(audio)---->frame----->audio_fifo
 
 
 ```
+## rtp协议
+```angular2html
 
+视频地址 音频地址
+url1 + url2------>Initer1 + Initer2----->encode1 + encode2
+
+
+```
+
+## 多编码 工作
+```angular2html
+
+                            ------音频--------编码---------packet          |多路转发 
+Initers(多个)----->解码-----|          取数据帧dealing(得到frame) ---------|    
+                            ------视频--------编码---------packet          |多路转发
+
+
+```

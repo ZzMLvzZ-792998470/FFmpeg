@@ -206,13 +206,18 @@ IniterO::~IniterO(){
 
 
 int IniterO::init_fmt() {
-    if(filename.substr(0, 4) == "rtmp")  avformat_alloc_output_context2(&ofmt_ctx, nullptr, "flv", filename.c_str());
+    if(filename.substr(0, 3) == "rtp") avformat_alloc_output_context2(&ofmt_ctx, nullptr, "rtp", filename.c_str());
+    else if(filename.substr(0, 4) == "rtmp")  avformat_alloc_output_context2(&ofmt_ctx, nullptr, "flv", filename.c_str());
     else if(filename.substr(0, 4) == "rtsp" ) avformat_alloc_output_context2(&ofmt_ctx, nullptr, "rtsp", filename.c_str());
     else avformat_alloc_output_context2(&ofmt_ctx, nullptr, nullptr, filename.c_str());
+
+
     if (!ofmt_ctx) {
         av_log(nullptr, AV_LOG_ERROR, "Could not create output context\n");
         return AVERROR_UNKNOWN;
     }
+
+
 
     return 0;
 }
@@ -224,6 +229,7 @@ AVFormatContext* IniterO::get_fmt_ctx() {
 
 
 void IniterO::print_ofmt_info() {
+
     av_dump_format(ofmt_ctx, 0, filename.c_str(), 1);
 }
 
@@ -231,13 +237,20 @@ void IniterO::print_ofmt_info() {
 int IniterO::ofmt_io_open() {
     int ret;
 
+
+
     if (!(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ofmt_ctx->pb, filename.c_str(), AVIO_FLAG_WRITE);
         if (ret < 0) {
             av_log(nullptr, AV_LOG_ERROR, "Could not open output file '%s'", filename.c_str());
             return ret;
         }
+
     }
+
+
+
+
     return ret;
 }
 

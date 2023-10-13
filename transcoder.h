@@ -42,14 +42,27 @@ public:
     int reencode_local_device();
 
 
+
+    /*
+     * 以下大部分为重复的函数...2023/10/12
+     * */
+
+
+
+
     //多线程转码推流rtsp
-    int mp4_files2rtsp();
+    int mp4_files2rtsp(int encoder_index);
 
     //多线程转码推流rtmp
-    int mp4_files2rtmp();
+    int mp4_files2rtmp(int encoder_index);
 
     //多线程转码为MP4
-    int mp4files2mp4();
+    int mp4files2mp4(int encoder_index);
+
+
+    int mp4_files2rtp(int encoder_index);
+
+
 
 
     //录屏
@@ -57,12 +70,6 @@ public:
 
     //推流
     int device2rtmp();
-
-
-
-
-
-
 
 
 
@@ -81,10 +88,10 @@ public:
 
 
     //MP4视频编码线程（无依赖）
-    int mp4_video_separate(std::vector<int>& works);
+    int mp4_video_separate(std::vector<int>& works, int& encode_index);
 
     //MP4音频编码线程（无依赖）
-    int mp4_audio_separate(std::vector<int>& works);
+    int mp4_audio_separate(std::vector<int>& works, int& encode_index);
 
 
 
@@ -152,10 +159,10 @@ public:
 
 
     //rtmp独立线程推流视频 每个帧指定间隔休眠时间
-    int rtmp_video_perFrameSeparate(std::vector<int>& works);
+    int rtmp_video_perFrameSeparate(std::vector<int>& works, int& encode_index);
 
     //rtmp独立线程推流音频 每个帧指定间隔休眠时间
-    int rtmp_audio_perFrameSeparate(std::vector<int>& works);
+    int rtmp_audio_perFrameSeparate(std::vector<int>& works, int& encode_index);
 
 
     //rtmp 推流设备视频
@@ -174,13 +181,29 @@ public:
 
 
 
-
-
     //rtsp 视频推流
-    int rtsp_video_perFrameSeparate(std::vector<int>& works);
+    int rtsp_video_perFrameSeparate(std::vector<int>& works, int& encode_index);
 
     //rtsp 音频推流
-    int rtsp_audio_perFrameSeparate(std::vector<int>& works);
+    int rtsp_audio_perFrameSeparate(std::vector<int>& works, int& encode_index);
+
+
+
+
+
+
+    int rtp_video_perFrameSeparate(std::vector<int>& works, int& encode_index);
+
+    int rtp_audio_perFrameSeparate(std::vector<int>& works, int& encode_index);
+
+
+
+
+    int reencode_video(std::vector<int>& works);
+
+
+    int reencode_audio(std::vector<int>& works);
+
 
 
 private:
@@ -209,6 +232,13 @@ private:
 
     std::vector<Decoder::ptr> decoders;
     std::vector<Encoder::ptr> encoders;
+
+
+    //std::vector<int> packets_over;
+
+    std::vector<std::vector<int> > packets_over;
+
+    //int encoder_type = 0;
 
 };
 

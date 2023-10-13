@@ -19,12 +19,21 @@ extern "C"{
 class Encoder{
 public:
     typedef std::shared_ptr<Encoder> ptr;
-    Encoder(int height = 1080, int width = 1920, int framerate = 30, int samplerate = 44100);
+    Encoder(int height = 1080, int width = 1920, int framerate = 30, int samplerate = 44100, int encoder_type = 0);
 
     ~Encoder();
 
     //初始化编码器和编码上下文
     int init_encoder(AVFormatContext *ofmt_ctx);
+
+
+
+    int init_encoder(AVFormatContext *ofmt_ctx, int type);
+
+
+    int get_encoder_type() {return encoder_type;;}
+
+
 
     //flush清理最后残留数据
     int flush();
@@ -88,6 +97,23 @@ public:
     int encode_audio_rtsp(AVFrame* frame, int64_t& last_time);
 
 
+    int encode_video_rtp(AVFrame* frame, int64_t& last_time);
+
+    int encode_audio_rtp(AVFrame* frame, int64_t& last_time);
+
+
+
+
+    int encode_video_test(AVFrame* frame, int64_t& last_time);
+
+
+    int encode_audio_test(AVFrame* frame, int64_t& last_time);
+
+
+
+
+
+
 private:
     AVFormatContext *m_ofmt_ctx;
 
@@ -105,6 +131,8 @@ private:
 
     double time_per_frame_video;
     double time_per_frame_audio;
+
+    int encoder_type = 0;
 
 
 };

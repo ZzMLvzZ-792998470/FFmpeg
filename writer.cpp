@@ -41,6 +41,21 @@ int Writer::write_tail(AVFormatContext* ofmt_ctx) {
 
 
 
+int Writer::write_packets_no_interleaved(AVFormatContext *ofmt_ctx, AVPacket *enc_pkt) {
+    int ret;
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ret = av_write_frame(ofmt_ctx, enc_pkt);
+        //ret = av_interleaved_write_frame(ofmt_ctx, enc_pkt);
+    }
+    if(ret < 0){
+        av_log(nullptr, AV_LOG_ERROR, "Error occurred when during(write_frame) output file\n");
+        return ret;
+    }
+
+    return 0;
+}
+
 //
 //int Writer::init_ofmt() {
 //
