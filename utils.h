@@ -46,7 +46,11 @@ public:
     static int write_to_fifo(AVAudioFifo* fifo, SwrContext* swr_ctx, AVFrame* src_frame, int channels, AVSampleFormat sample_fmt, int dst_sample_rate);
 
     //获得fifo中 处理之后的音频数据帧
-    static AVFrame* get_sample_fixed_frame(AVAudioFifo* fifo, AVCodecContext* audio_enc_ctx, bool is_last_data);
+    static AVFrame* get_from_fifo(AVAudioFifo* fifo, AVCodecContext* audio_enc_ctx);
+
+
+private:
+    static std::mutex m_mtx;
 
 };
 

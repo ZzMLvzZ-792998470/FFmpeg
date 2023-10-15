@@ -60,6 +60,17 @@ public:
 
 
 
+
+    void clear_audio(){
+        std::lock_guard<std::mutex> lock(m_mtx);
+        while(!audio_queue.empty()){
+            av_frame_free(&audio_queue.front());
+            audio_queue.pop_front();
+        }
+
+    }
+
+
     //视频解码队列pop操作
     void pop_video(){
         std::lock_guard<std::mutex> lock(m_mtx);

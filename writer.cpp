@@ -16,7 +16,8 @@ int Writer::write_header(AVFormatContext* ofmt_ctx) {
 int Writer::write_packets(AVFormatContext* ofmt_ctx, AVPacket *enc_pkt) {
     int ret;
 
-    if(enc_pkt->stream_index == 1) enc_pkt->stream_index = std::string(ofmt_ctx->url).substr(0, 3) == "rtp" ? 0 : 1;
+    //if(enc_pkt->stream_index == 1) enc_pkt->stream_index = std::string(ofmt_ctx->url).substr(0, 3) == "rtp" ? 0 : 1;
+    if(enc_pkt->stream_index == 1) enc_pkt->stream_index = std::string(ofmt_ctx->oformat->name) == "rtp" ? 0 : 1;
     enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * ofmt_ctx->streams[enc_pkt->stream_index]->time_base.den / ofmt_ctx->streams[enc_pkt->stream_index]->time_base.num / 1000);
 
     {
@@ -29,6 +30,7 @@ int Writer::write_packets(AVFormatContext* ofmt_ctx, AVPacket *enc_pkt) {
         return ret;
     }
 
+    av_packet_free(&enc_pkt);
     return 0;
 }
 

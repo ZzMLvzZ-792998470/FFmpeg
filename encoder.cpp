@@ -120,6 +120,7 @@ int Encoder::init_audio_encoder(AVFormatContext *ofmt_ctx) {
 
     time_per_frame_audio = 1024 * 1.0 * 1000 / audio_enc_ctx->sample_rate;
 
+
     //enc_ctx->flags = 4194304;
     if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
         enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -145,6 +146,7 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
     if (encode_frame) encode_frame->pts = (int64_t)video_pts;
     video_pts++;
 
+
     ret = avcodec_send_frame(video_enc_ctx, encode_frame);
     if (ret < 0) {
         av_log(nullptr, AV_LOG_ERROR, "video_frame: avcodec_send_frame failed.\n");
@@ -165,22 +167,18 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
 //        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
 //        av_log(nullptr, AV_LOG_INFO, "video packet.\n");
 
-        //enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * ofmt_ctx->streams[stream_index]->time_base.den / ofmt_ctx->streams[stream_index]->time_base.num / 1000);
-
 
         if(last_time != -1){
-            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1000){
+            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1500){
                 av_usleep(100);
             }
         }
 
 
         distributer->distribute(enc_pkt);
-        // distributer->distribute(av_packet_clone(enc_pkt));
 
-        //Writer::write_packets(ofmt_ctx, enc_pkt);
 
-        av_log(nullptr, AV_LOG_INFO, "encode one video packet: %dms.\n", (Timer::getCurrentTime() - last_time) / 1000);
+        if(last_time != -1) av_log(nullptr, AV_LOG_INFO, "encode one video packet: %dms.\n", (Timer::getCurrentTime() - last_time) / 1000);
         last_time = Timer::getCurrentTime();
     }
 
@@ -191,7 +189,6 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
 
 
 int Encoder::encode_audio(Distributer::ptr distributer, AVFrame *frame, int64_t &last_time) {
-    int64_t func_time = Timer::getCurrentTime();
     int ret;
     int stream_index = 1;
     AVFrame *encode_frame = frame;
@@ -222,21 +219,15 @@ int Encoder::encode_audio(Distributer::ptr distributer, AVFrame *frame, int64_t 
 //        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
 //        av_log(nullptr, AV_LOG_INFO, "audio packet.\n");
 
-        //enc_pkt->pts = enc_pkt->dts = (enc_pkt->pts * ofmt_ctx->streams[stream_index]->time_base.den / ofmt_ctx->streams[stream_index]->time_base.num / 1000);
-
         if(last_time != -1){
-            while(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000 - (Timer::getCurrentTime() - last_time) > 500){
+            while(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000 - (Timer::getCurrentTime() - last_time) > 1800){
                 av_usleep(100);
             }
         }
 
-
         distributer->distribute(enc_pkt);
 
-        //distributer->distribute(av_packet_clone(enc_pkt));
-       // Writer::write_packets(ofmt_ctx, enc_pkt);
-
-        av_log(nullptr, AV_LOG_INFO, "encode one audio packet: %dms.\n", (Timer::getCurrentTime() - last_time) / 1000);
+        if(last_time != -1) av_log(nullptr, AV_LOG_INFO, "encode one audio packet: %dms.\n", (Timer::getCurrentTime() - last_time) / 1000);
         last_time = Timer::getCurrentTime();
     }
 

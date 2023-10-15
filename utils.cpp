@@ -1,6 +1,6 @@
 #include "utils.h"
 
-
+std::mutex Utils::m_mtx;
 
 
 
@@ -169,8 +169,12 @@ int Utils::write_to_fifo(AVAudioFifo *fifo, SwrContext *swr_ctx, AVFrame *src_fr
     int convert_nb_samples =  swr_convert(swr_ctx, audio_data_buffer, output_frame_size,
                                          (const uint8_t **) src_frame->data, src_frame->nb_samples);
 
-    av_audio_fifo_realloc(fifo, av_audio_fifo_size(fifo) + convert_nb_samples);
-    av_audio_fifo_write(fifo, (void **) audio_data_buffer, convert_nb_samples);
+    {
+        std::lock_guard<std::mutex> lock(m_mtx);
+        av_audio_fifo_realloc(fifo, av_audio_fifo_size(fifo) + convert_nb_samples);
+        av_audio_fifo_write(fifo, (void **) audio_data_buffer, convert_nb_samples);
+
+    }
 
     if (audio_data_buffer) av_freep(&audio_data_buffer[0]);
     av_freep(&audio_data_buffer);
@@ -181,11 +185,12 @@ int Utils::write_to_fifo(AVAudioFifo *fifo, SwrContext *swr_ctx, AVFrame *src_fr
 }
 
 
-AVFrame* Utils::get_sample_fixed_frame(AVAudioFifo* fifo, AVCodecContext* audio_enc_ctx, bool is_last_data) {
 
-    //这里可能需要修改
-    if((av_audio_fifo_size(fifo) >= audio_enc_ctx->frame_size) || (av_audio_fifo_size(fifo) > 0 && is_last_data)){
-        int frame_size = FFMIN(av_audio_fifo_size(fifo),audio_enc_ctx->frame_size);
+
+AVFrame* Utils::get_from_fifo(AVAudioFifo* fifo, AVCodecContext* audio_enc_ctx) {
+
+    if((av_audio_fifo_size(fifo) > 0)){
+        int frame_size = FFMIN(av_audio_fifo_size(fifo), audio_enc_ctx->frame_size);
         AVFrame *dst_frame = av_frame_alloc();
         dst_frame->nb_samples = frame_size;
         dst_frame->channel_layout = audio_enc_ctx->channel_layout;
@@ -193,9 +198,13 @@ AVFrame* Utils::get_sample_fixed_frame(AVAudioFifo* fifo, AVCodecContext* audio_
         dst_frame->sample_rate = audio_enc_ctx->sample_rate;
 
         av_frame_get_buffer(dst_frame, 0);
-        av_audio_fifo_read(fifo, (void **)dst_frame->data, frame_size);
 
+        {
+            std::lock_guard<std::mutex> lock(m_mtx);
+            av_audio_fifo_read(fifo, (void **) dst_frame->data, frame_size);
+        }
         return dst_frame;
     }
     return nullptr;
+
 }
