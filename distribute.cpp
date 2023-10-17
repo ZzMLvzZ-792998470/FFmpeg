@@ -7,6 +7,7 @@ Distributer::Distributer(std::vector<AVFormatContext *> &ofmt_ctxs) : ofmt_ctxs(
 
 Distributer::~Distributer() {
     while(!ofmt_ctxs.empty()){
+        ofmt_ctxs.back() = nullptr;
         ofmt_ctxs.pop_back();
     }
 }

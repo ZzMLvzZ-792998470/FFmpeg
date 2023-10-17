@@ -16,6 +16,7 @@ extern "C"{
 
 #include <string>
 #include <memory>
+#include <condition_variable>
 
 
 class Encoder{
@@ -60,6 +61,9 @@ private:
 
     double time_per_frame_video;
     double time_per_frame_audio;
+
+    std::mutex m_mtx;
+    std::condition_variable cond;
 };
 
 

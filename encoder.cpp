@@ -163,13 +163,14 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
         enc_pkt->dts = enc_pkt->pts = current_time_video;
         current_time_video += time_per_frame_video;
 
+
 //        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
 //        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
 //        av_log(nullptr, AV_LOG_INFO, "video packet.\n");
 
 
         if(last_time != -1){
-            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1500){
+            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1800){
                 av_usleep(100);
             }
         }

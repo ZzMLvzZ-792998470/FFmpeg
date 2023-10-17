@@ -48,6 +48,9 @@ public:
     //获取ifmt_ctx
     AVFormatContext* get_fmt_ctx() override;
 
+
+    AVFormatContext* change_fmt(std::string& filename);
+
 private:
     std::string filename;
     AVFormatContext *ifmt_ctx = nullptr;

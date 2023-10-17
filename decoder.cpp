@@ -2,9 +2,9 @@
 #include <iostream>
 
 
-extern std::mutex mtx;
-extern std::condition_variable cond;
-std::mutex device_mutex;
+//extern std::mutex mtx;
+//extern std::condition_variable cond;
+//std::mutex device_mutex;
 
 Decoder::Decoder(int set_framerate, AVFormatContext *ifmt_ctx) : ifmt_ctx(ifmt_ctx), set_framerate(set_framerate){
 
@@ -13,7 +13,7 @@ Decoder::Decoder(int set_framerate, AVFormatContext *ifmt_ctx) : ifmt_ctx(ifmt_c
 
 
 Decoder::~Decoder() {
-    //ifmt_ctx = nullptr;
+    ifmt_ctx = nullptr;
     while(!audio_queue.empty()){
         pop_audio();
     }
@@ -115,70 +115,87 @@ int Decoder::decode_high2low() {
     AVPacket *packet = av_packet_alloc();
     int time = 0;
     while(true) {
-        if ((ret = av_read_frame(ifmt_ctx, packet)) < 0){
-            if(time > 0){
-                time--;
-                av_seek_frame(ifmt_ctx, -1, 0, AVSEEK_FLAG_FRAME);
-                avformat_seek_file(ifmt_ctx, -1, 0, 0, INT_MAX, 0);
-                avcodec_flush_buffers(video_dec_ctx);
-                avcodec_flush_buffers(audio_dec_ctx);
-                continue;
-            } else{
+        {
+            std::unique_lock<std::mutex> lock(cv_mtx);
+            while(is_changing){
+                cond.wait(lock);
+            }
+        }
+
+        is_working = true;
+        {
+            std::lock_guard<std::mutex> lock(para_mtx);
+            if ((ret = av_read_frame(ifmt_ctx, packet)) < 0) {
+                if (time > 0) {
+                    time--;
+                    av_seek_frame(ifmt_ctx, -1, 0, AVSEEK_FLAG_FRAME);
+                    avformat_seek_file(ifmt_ctx, -1, 0, 0, INT_MAX, 0);
+                    avcodec_flush_buffers(video_dec_ctx);
+                    avcodec_flush_buffers(audio_dec_ctx);
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+
+            int stream_index = packet->stream_index;
+
+            if (stream_index == 0) ret = avcodec_send_packet(video_dec_ctx, packet);
+            else ret = avcodec_send_packet(audio_dec_ctx, packet);
+
+            if (ret < 0) {
+                av_log(nullptr, AV_LOG_ERROR, "Decoding failed id:%d.\n", ret);
                 break;
             }
-        }
-        int stream_index = packet->stream_index;
 
-        if(stream_index == 0) ret = avcodec_send_packet(video_dec_ctx, packet);
-        else ret = avcodec_send_packet(audio_dec_ctx, packet);
-        if (ret < 0) {
-            av_log(nullptr, AV_LOG_ERROR, "Decoding failed id:%d.\n", ret);
-            break;
-        }
+            av_packet_unref(packet);
+            AVFrame *dec_frame = av_frame_alloc();
+            while (ret >= 0) {
 
-        av_packet_unref(packet);
-        AVFrame *dec_frame = av_frame_alloc();
-        while (ret >= 0) {
-            if(stream_index == 0) ret = avcodec_receive_frame(video_dec_ctx, dec_frame);
-            else ret = avcodec_receive_frame(audio_dec_ctx, dec_frame);
+                if (stream_index == 0) ret = avcodec_receive_frame(video_dec_ctx, dec_frame);
+                else ret = avcodec_receive_frame(audio_dec_ctx, dec_frame);
 
-            if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) break;
-            else if (ret < 0) return ret;
+                if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) break;
+                else if (ret < 0) return ret;
+                dec_frame->pts = dec_frame->best_effort_timestamp;
+                dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
+                //如果是视频帧 需要判断丢帧
+                if (stream_index == 0) {
+                    if (count >= 1.0f) {
+                        while (count >= 1.0f) {
+                            count -= 1.0f;
+                        }
+                    } else {
+                        count += frameratio;
+
+                        {
+                            while (video_queue.size() >= video_queue_cache) {
+                                av_usleep(1000);
+                            }
+                        }
 
 
-            dec_frame->pts = dec_frame->best_effort_timestamp;
-            dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
-            //如果是视频帧 需要判断丢帧
-            if(stream_index == 0){
-                if(count >= 1.0f) {
-                    while(count >= 1.0f){
-                        count -= 1.0f;
-                    }
-                }
-                else{
-                    count += frameratio;
-                    {
-                        std::unique_lock<std::mutex> lock(mtx);
-                        while(video_queue.size() >= video_queue_cache){
-                            cond.wait(lock);
+                        {
+                            std::lock_guard<std::mutex> lock(m_mtx);
+                            video_queue.push_back(av_frame_clone(dec_frame));
                         }
                     }
-
+                } else {
                     {
                         std::lock_guard<std::mutex> lock(m_mtx);
-                        video_queue.push_back(av_frame_clone(dec_frame));
+                        audio_queue.push_back(av_frame_clone(dec_frame));
                     }
                 }
-            } else{
-                {
-                    std::lock_guard<std::mutex> lock(m_mtx);
-                    audio_queue.push_back(av_frame_clone(dec_frame));
-                }
+                av_frame_unref(dec_frame);
             }
-            av_frame_unref(dec_frame);
-            //av_usleep(2500);
+            av_frame_free(&dec_frame);
         }
-        av_frame_free(&dec_frame);
+        is_working = false;
+        {
+            std::unique_lock<std::mutex> lock(cv_mtx);
+            cond.notify_all();
+        }
 
     }
     av_packet_free(&packet);
@@ -191,83 +208,99 @@ int Decoder::decode_low2high() {
     int ret;
     int time = 0;
     while(true) {
-        if (count < 1.0f) {
-            if ((ret = av_read_frame(ifmt_ctx, packet)) < 0) {
-                if(time >0){
-                    time--;
-                    av_seek_frame(ifmt_ctx, -1, 0, AVSEEK_FLAG_FRAME);
-                    avformat_seek_file(ifmt_ctx, -1, 0, 0, INT_MAX, 0);
-                    avcodec_flush_buffers(video_dec_ctx);
-                    avcodec_flush_buffers(audio_dec_ctx);
-                    continue;
-                } else {
+        {
+            std::unique_lock<std::mutex> lock(cv_mtx);
+            while(is_changing){
+                cond.wait(lock);
+            }
+        }
+
+        is_working = true;
+        {
+            std::lock_guard<std::mutex> lock(para_mtx);
+            if (count < 1.0f) {
+                if ((ret = av_read_frame(ifmt_ctx, packet)) < 0) {
+                    //is_working = true;
+                    if (time > 0) {
+                        time--;
+                        av_seek_frame(ifmt_ctx, -1, 0, AVSEEK_FLAG_FRAME);
+                        avformat_seek_file(ifmt_ctx, -1, 0, 0, INT_MAX, 0);
+                        avcodec_flush_buffers(video_dec_ctx);
+                        avcodec_flush_buffers(audio_dec_ctx);
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+
+                int stream_index = packet->stream_index;
+                if (stream_index == 0) ret = avcodec_send_packet(video_dec_ctx, packet);
+                else ret = avcodec_send_packet(audio_dec_ctx, packet);
+                if (ret < 0) {
+                    av_log(nullptr, AV_LOG_ERROR, "Decoding failed.\n");
                     break;
                 }
-            }
-
-            int stream_index = packet->stream_index;
-            if(stream_index == 0) ret = avcodec_send_packet(video_dec_ctx, packet);
-            else ret = avcodec_send_packet(audio_dec_ctx, packet);
-            if (ret < 0) {
-                av_log(nullptr, AV_LOG_ERROR, "Decoding failed.\n");
-                break;
-            }
 
 
-            av_packet_unref(packet);
-            AVFrame *dec_frame = av_frame_alloc();
-            while (ret >= 0) {
-                if(stream_index == 0) ret = avcodec_receive_frame(video_dec_ctx, dec_frame);
-                else ret = avcodec_receive_frame(audio_dec_ctx, dec_frame);
+                av_packet_unref(packet);
+                AVFrame *dec_frame = av_frame_alloc();
+                while (ret >= 0) {
+                    if (stream_index == 0) ret = avcodec_receive_frame(video_dec_ctx, dec_frame);
+                    else ret = avcodec_receive_frame(audio_dec_ctx, dec_frame);
 
-                if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) break;
-                else if (ret < 0) return ret;
+                    if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) break;
+                    else if (ret < 0) return ret;
 
 
-                dec_frame->pts = dec_frame->best_effort_timestamp;
-                dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
-                if (stream_index == 0) {
-                    //写数据加锁
-                    {
-                        std::unique_lock<std::mutex> lock(mtx);
-                        while(video_queue.size() >= video_queue_cache){
-                            cond.wait(lock);
+                    dec_frame->pts = dec_frame->best_effort_timestamp;
+                    dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
+                    if (stream_index == 0) {
+                        //写数据加锁
+
+                        while (video_queue.size() >= video_queue_cache) {
+                            av_usleep(1000);
+                        }
+
+
+                        {
+                            std::lock_guard<std::mutex> lock(m_mtx);
+                            video_queue.push_back(av_frame_clone(dec_frame));
+
+                            //内存泄漏存疑点
+                            if (count + frameratio >= 1.0f) prev_frame = av_frame_clone(dec_frame);
+                        }
+                        av_frame_unref(dec_frame);
+                        count += frameratio;
+                    } else {
+                        {
+                            std::lock_guard<std::mutex> lock(m_mtx);
+                            audio_queue.push_back(av_frame_clone(dec_frame));
                         }
                     }
-
-                    {
-                        std::lock_guard<std::mutex> lock(m_mtx);
-                        video_queue.push_back(av_frame_clone(dec_frame));
-
-                        //内存泄漏存疑点
-                        if(count + frameratio >= 1.0f) prev_frame = av_frame_clone(dec_frame);
-                    }
-                    av_frame_unref(dec_frame);
-                    count += frameratio;
-                }else{
-                    {
-                        std::lock_guard<std::mutex> lock(m_mtx);
-                        audio_queue.push_back(av_frame_clone(dec_frame));
-                    }
                 }
-            }
-            av_frame_free(&dec_frame);
-        } else {
-            while(count >= 1.0f) {
-                count -= 1.0f;
-                {
-                    std::unique_lock<std::mutex> lock(mtx);
+                av_frame_free(&dec_frame);
+            } else {
+                while (count >= 1.0f) {
+                    count -= 1.0f;
+
                     while (video_queue.size() >= video_queue_cache) {
-                        cond.wait(lock);
+                        av_usleep(1000);
                     }
-                }
-                {
-                    std::lock_guard<std::mutex> lock(m_mtx);
-                    video_queue.push_back(av_frame_clone(prev_frame));
-                    if (count < 1.0f) av_frame_free(&prev_frame);
+
+                    {
+                        std::lock_guard<std::mutex> lock(m_mtx);
+                        video_queue.push_back(av_frame_clone(prev_frame));
+                        if (count < 1.0f) av_frame_free(&prev_frame);
+                    }
                 }
             }
         }
+        is_working = false;
+        {
+            std::unique_lock<std::mutex> lock(cv_mtx);
+            cond.notify_all();
+        }
+
     }
     av_packet_free(&packet);
     return 0;
@@ -313,12 +346,12 @@ int Decoder::test_decode(){
             dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
             if (stream_index == 1) {
                 {
-                    std::lock_guard<std::mutex> lock(mtx);
+                    std::lock_guard<std::mutex> lock(m_mtx);
                     video_queue.push_back(av_frame_clone(dec_frame));
                 }
             }else{
                 {
-                    std::lock_guard<std::mutex> lock(mtx);
+                    std::lock_guard<std::mutex> lock(m_mtx);
                     audio_queue.push_back(av_frame_clone(dec_frame));
                 }
             }
@@ -336,8 +369,8 @@ int Decoder::test_decode_only_video(int& video_over) {
     int ret;
     int time = 0;
     while(video_over != 1) {
-        {
-            std::lock_guard<std::mutex> lock(device_mutex);
+//        {
+//            std::lock_guard<std::mutex> lock(m_mtx);
             if ((ret = av_read_frame(ifmt_ctx, packet)) < 0) {
                 if (time > 0) {
                     time--;
@@ -350,7 +383,7 @@ int Decoder::test_decode_only_video(int& video_over) {
                     break;
                 }
             }
-        }
+//        }
         int stream_index = packet->stream_index;
         ret = avcodec_send_packet(video_dec_ctx, packet);
         if(ret < 0){
@@ -369,13 +402,10 @@ int Decoder::test_decode_only_video(int& video_over) {
 
             dec_frame->pts = dec_frame->best_effort_timestamp;
             dec_frame->pict_type = AV_PICTURE_TYPE_NONE;
-            {
-                std::unique_lock<std::mutex> lock(mtx);
-                while (video_queue.size() >= video_queue_cache) {
-                    cond.wait(lock);
-                }
-            }
 
+            while(video_queue.size() >= video_queue_cache){
+                av_usleep(100);
+            }
 
 
             video_queue.push_back(av_frame_clone(dec_frame));
@@ -394,8 +424,8 @@ int Decoder::test_decode_only_audio(int& audio_over) {
     int ret;
     int time = 0;
     while(audio_over != 1) {
-        {
-            std::lock_guard<std::mutex> lock(device_mutex);
+//        {
+//            std::lock_guard<std::mutex> lock(m_mtx);
             if ((ret = av_read_frame(ifmt_ctx, packet)) < 0) {
                 if (time > 0) {
                     time--;
@@ -407,7 +437,7 @@ int Decoder::test_decode_only_audio(int& audio_over) {
                 } else {
                     break;
                 }
-            }
+          //  }
         }
         int stream_index = packet->stream_index;
         ret = avcodec_send_packet(audio_dec_ctx, packet);
@@ -436,5 +466,45 @@ int Decoder::test_decode_only_audio(int& audio_over) {
         av_frame_free(&dec_frame);
     }
     av_packet_free(&packet);
+    return 0;
+}
+
+
+
+
+int Decoder::change_fmt(AVFormatContext *fmt_ctx) {
+    int ret;
+    is_changing = true;
+    {
+        std::unique_lock<std::mutex> lock(cv_mtx);
+        while(is_working){
+            cond.wait(lock);
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(para_mtx);
+        avformat_close_input(&ifmt_ctx);
+        ifmt_ctx = nullptr;
+        if (audio_dec_ctx) avcodec_free_context(&audio_dec_ctx);
+        if (video_dec_ctx) avcodec_free_context(&video_dec_ctx);
+        ifmt_ctx = fmt_ctx;
+        ret = init_decoder();
+        if (ret < 0) {
+            av_log(nullptr, AV_LOG_ERROR, "Decoder::change_fmt failed.\n");
+            return ret;
+        }
+
+    }
+
+    {
+        std::unique_lock<std::mutex> lock(cv_mtx);
+        cond.notify_all();
+    }
+    is_changing = false;
+
+    while(!audio_queue.empty()) pop_audio();
+    while(!video_queue.empty()) pop_video();
+
     return 0;
 }

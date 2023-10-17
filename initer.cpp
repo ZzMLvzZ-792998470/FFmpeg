@@ -31,6 +31,22 @@ AVFormatContext* IniterI::get_fmt_ctx() {
 }
 
 
+AVFormatContext* IniterI::change_fmt(std::string &filename){
+    int ret;
+//    avformat_close_input(&ifmt_ctx);
+    ifmt_ctx = nullptr;
+
+    this->filename = filename;
+
+    ret = init_fmt();
+    if(ret < 0){
+        av_log(nullptr, AV_LOG_ERROR, "change_fmt failed.\n");
+        return nullptr;
+    }
+    return ifmt_ctx;
+}
+
+
 
 IniterI::~IniterI(){
     avformat_close_input(&ifmt_ctx);

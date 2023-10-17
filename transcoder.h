@@ -10,9 +10,11 @@
 #include "timer.h"
 #include "thread.h"
 
+#include "audio_resampler.h"
 
-#include <mutex>
-#include <condition_variable>
+//
+//#include <mutex>
+//#include <condition_variable>
 
 
 class Transcoder{
@@ -46,7 +48,7 @@ public:
     int init_Fifo();
 
 
-    int test_init_transcoder();
+    int init_transcoder();
 
 
     /*
@@ -54,7 +56,7 @@ public:
      * */
 
     //初始化转码
-    int init_transcoder();
+    int init_transcode_old();
 
     int init_local_device_transcoder();
 
@@ -66,7 +68,7 @@ public:
 
     int add_to_fifo(std::vector<int>& works);
 
-    int get_from_fifo(std::vector<int>& works);
+    int clear_audio_queues(std::vector<int>& works);
 
 
     int dealing_audio(std::vector<int>& works);
@@ -80,6 +82,18 @@ public:
 
 
     int transcode();
+
+
+    int change_input_stream(std::string& filename, int& stream_index);
+
+    void test_func_pop_audio(std::vector<int>& works);
+
+
+    void test_func_pop_video(std::vector<int>& works);
+
+protected:
+    std::mutex m_mtx;
+
 
 private:
     std::vector<std::string> input_filenames;
@@ -96,10 +110,12 @@ private:
     int outputNums;
 
 
-    SwrContext *swr_ctx = nullptr;
-    AVAudioFifo *fifo = nullptr;
+//    SwrContext *swr_ctx = nullptr;
+//    AVAudioFifo *fifo = nullptr;
     IniterD::ptr initerD;
     Distributer::ptr distributer;
+
+    AudioResampler::ptr audioResampler;
 
 
     std::vector<IniterI::ptr> IniterIs;
@@ -109,9 +125,10 @@ private:
     std::vector<Encoder::ptr> encoders;
 
 
+    std::vector<int> works;
+
     int video_packet_over = 0;
     int audio_packet_over = 0;
-
 };
 
 

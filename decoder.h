@@ -98,6 +98,8 @@ public:
     }
 
 
+    int change_fmt(AVFormatContext* fmt_ctx);
+
 private:
     AVFormatContext *ifmt_ctx;
 
@@ -117,7 +119,14 @@ private:
     std::deque<AVFrame *> video_queue = {};
     std::deque<AVFrame *> audio_queue = {};
 
+    bool is_changing = false;
+    bool is_working = false;
+
     std::mutex m_mtx;
+    std::mutex cv_mtx;
+    std::mutex para_mtx;
+
+    std::condition_variable cond;
 };
 
 
