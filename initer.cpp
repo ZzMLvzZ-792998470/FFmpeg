@@ -33,7 +33,7 @@ AVFormatContext* IniterI::get_fmt_ctx() {
 
 AVFormatContext* IniterI::change_fmt(std::string &filename){
     int ret;
-//    avformat_close_input(&ifmt_ctx);
+    //avformat_close_input(&ifmt_ctx);
     ifmt_ctx = nullptr;
 
     this->filename = filename;

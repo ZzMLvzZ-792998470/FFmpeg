@@ -1,7 +1,6 @@
 #ifndef _DECODER_H
 #define _DECODER_H
 
-
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -10,12 +9,13 @@ extern "C"{
 }
 
 #include <memory>
-#include <deque>
-#include <mutex>
+//#include <deque>
+//#include <mutex>
 #include <condition_variable>
 #include <memory>
 
 #include "timer.h"
+#include "ThreadSafeQueue.h"
 
 
 class Decoder{
@@ -40,16 +40,32 @@ public:
     void set_video_queue_cache(int& cache_size);
 
     //获得video_dec_ctx
-    AVCodecContext *get_video_dec_ctx(){return video_dec_ctx;}
+    AVCodecContext *get_video_dec_ctx(){
+        std::lock_guard<std::mutex> lock(para_mtx);
+        return video_dec_ctx;
+    }
 
     //获得audio_dec_ctx
-    AVCodecContext *get_audio_dec_ctx(){return audio_dec_ctx;}
+    AVCodecContext *get_audio_dec_ctx(){
+        std::lock_guard<std::mutex> lock(para_mtx);
+        return audio_dec_ctx;
+    }
 
     //获得视频解码队列
-    std::deque<AVFrame *> get_video_queue(){return video_queue;}
+//    std::deque<AVFrame *> get_video_queue(){
+//        std::lock_guard<std::mutex> lock(m_mtx);
+//        return video_queue;
+//    }
+//    ThreadSafeDeque<AVFrame *> get_video_queue(){
+//        return video_queue;
+//    };
+
 
     //获得音频解码队列
-    std::deque<AVFrame *> get_audio_queue(){ return audio_queue;}
+//    std::deque<AVFrame *> get_audio_queue(){
+//        std::lock_guard<std::mutex> lock(m_mtx);
+//        return audio_queue;
+//    }
 
 
     int test_decode();
@@ -60,20 +76,34 @@ public:
 
 
 
+    bool is_audio_queue_empty(){
+        return audio_queue.empty();
+    }
+
+
+    bool is_video_queue_empty(){
+        return video_queue.empty();
+    }
+
 
     void clear_audio(){
-        std::lock_guard<std::mutex> lock(m_mtx);
         while(!audio_queue.empty()){
-            av_frame_free(&audio_queue.front());
-            audio_queue.pop_front();
+            av_frame_free(&audio_queue.back());
+            audio_queue.pop_back();
         }
+    }
 
+
+    void clear_video(){
+        while(!video_queue.empty()){
+            av_frame_free(&video_queue.back());
+            video_queue.pop_back();
+        }
     }
 
 
     //视频解码队列pop操作
     void pop_video(){
-        std::lock_guard<std::mutex> lock(m_mtx);
         av_frame_free(&video_queue.front());
         video_queue.pop_front();
     }
@@ -81,24 +111,23 @@ public:
 
     //音频解码队列pop操作
     void pop_audio(){
-        std::lock_guard<std::mutex> lock(m_mtx);
         av_frame_free(&audio_queue.front());
         audio_queue.pop_front();
     }
 
 
     AVFrame* get_video_queue_front(){
-        std::lock_guard<std::mutex> lock(m_mtx);
         return video_queue.front();
     }
 
     AVFrame* get_audio_queue_front(){
-        std::lock_guard<std::mutex> lock(m_mtx);
         return audio_queue.front();
     }
 
 
     int change_fmt(AVFormatContext* fmt_ctx);
+
+    int test_decode_high2low();
 
 private:
     AVFormatContext *ifmt_ctx;
@@ -116,8 +145,9 @@ private:
 
     AVFrame *prev_frame = nullptr;
 
-    std::deque<AVFrame *> video_queue = {};
-    std::deque<AVFrame *> audio_queue = {};
+    ThreadSafeDeque<AVFrame *> video_queue = {};
+    ThreadSafeDeque<AVFrame *> audio_queue = {};
+
 
     bool is_changing = false;
     bool is_working = false;

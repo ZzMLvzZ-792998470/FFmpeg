@@ -38,13 +38,22 @@ public:
     int reset_resampler(AVCodecContext* audio_dec_ctx, AVCodecContext * audio_enc_ctx);
 
 
+    void reset_fifo();
+
+
+
 private:
     SwrContext *swr_ctx = nullptr;
     AVAudioFifo *fifo = nullptr;
 
+    std::mutex fifo_mtx;
+    std::mutex swr_mtx;
     std::mutex m_mtx;
+
     std::condition_variable cond;
-    bool fifo_is_working = false;
+
+    bool is_working = false;
+    bool is_changing = false;
 };
 
 

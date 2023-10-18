@@ -55,44 +55,29 @@ public:
      * 使用的方法
      * */
 
-    //初始化转码
-    int init_transcode_old();
 
     int init_local_device_transcoder();
-
-    //转码操作
-    int reencode_old();
 
     int reencode_local_device();
 
 
+    //把解码队列的音频数据写到fifo中
     int add_to_fifo(std::vector<int>& works);
 
+    //清理未使用音频解码队列
     int clear_audio_queues(std::vector<int>& works);
 
-
+    //处理音频数据
     int dealing_audio(std::vector<int>& works);
 
-
+    //处理视频数据
     int dealing_video(std::vector<int>& works);
 
-
-    //with fifo
-    int dealing_audio_old(std::vector<int>& works);
-
-
+    //转码操作
     int transcode();
 
-
+    //切流操作
     int change_input_stream(std::string& filename, int& stream_index);
-
-    void test_func_pop_audio(std::vector<int>& works);
-
-
-    void test_func_pop_video(std::vector<int>& works);
-
-protected:
-    std::mutex m_mtx;
 
 
 private:
@@ -109,9 +94,6 @@ private:
     int inputNums;
     int outputNums;
 
-
-//    SwrContext *swr_ctx = nullptr;
-//    AVAudioFifo *fifo = nullptr;
     IniterD::ptr initerD;
     Distributer::ptr distributer;
 
@@ -124,11 +106,15 @@ private:
     std::vector<Decoder::ptr> decoders;
     std::vector<Encoder::ptr> encoders;
 
-
     std::vector<int> works;
 
     int video_packet_over = 0;
     int audio_packet_over = 0;
+
+    std::mutex m_mtx;
+    std::mutex audio_mtx;
+    std::mutex video_mtx;
+    std::condition_variable cond;
 };
 
 
