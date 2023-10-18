@@ -174,7 +174,7 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
        // int64_t sleep_time = Timer::getCurrentTime();
 
         if(last_time != -1){
-            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1800){
+            while(1000 / framerate * 1000 - (Timer::getCurrentTime() - last_time) > 1000){
                 av_usleep(100);
             }
         }
@@ -228,7 +228,7 @@ int Encoder::encode_audio(Distributer::ptr distributer, AVFrame *frame, int64_t 
 
 
         if(last_time != -1){
-            while(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000 - (Timer::getCurrentTime() - last_time) > 2800){
+            while(audio_enc_ctx->frame_size * 1000 / audio_enc_ctx->sample_rate * 1000 - (Timer::getCurrentTime() - last_time) > 1000){
                 av_usleep(100);
             }
         }

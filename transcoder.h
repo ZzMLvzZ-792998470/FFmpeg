@@ -112,9 +112,14 @@ private:
     int audio_packet_over = 0;
 
     std::mutex m_mtx;
-    std::mutex audio_mtx;
-    std::mutex video_mtx;
+//    std::mutex audio_mtx;
+//    std::mutex video_mtx;
     std::condition_variable cond;
+
+    bool is_changing = false;
+
+    bool video_working = false;
+    bool audio_working = false;
 };
 
 

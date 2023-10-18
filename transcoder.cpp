@@ -381,9 +381,10 @@ int Transcoder::transcode() {
     int loop = 201;
     int time = 0;
     int stream_index = 0;
+    int64_t time_cur;
     //bool works = false;
     while(video_packet_over != 1 || audio_packet_over != 1){
-        if(Timer::getCurrentTime() - func_time >= 200000 && loop > 0) {
+        if((time_cur = Timer::getCurrentTime() - func_time) >= 50000 && loop > 0) {
             //func_time = Timer::getCurrentTime();
             if (time == 0) {
                 change_input_stream(file, stream_index);
@@ -447,11 +448,10 @@ int Transcoder::add_to_fifo(std::vector<int> &works) {
     bool audio_finish;
 
     while(true){
-
         audio_finish = decoders[0]->is_audio_queue_empty() && works[0] == 0 && audioResampler->get_fifo_size() <= 0;
         if(audio_finish) break;
 
-        while(audioResampler->get_fifo_size() >= 1024){
+        while(audioResampler->get_fifo_size() >= 2048){
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
@@ -478,14 +478,12 @@ int Transcoder::clear_audio_queues(std::vector<int> &works) {
     int ret;
     bool audio_finish;
 
-
     while(true){
         audio_finish = true;
         for(i = 1; i < inputNums; i++){
             audio_finish = audio_finish && (decoders[i]->is_audio_queue_empty()) && works[i] == 0;
         }
         if(audio_finish) break;
-
 
         for(i = 1; i < inputNums; i++){
             Thread clear_audio(&Decoder::clear_audio, decoders[i]);
@@ -507,9 +505,16 @@ int Transcoder::dealing_audio(std::vector<int> &works) {
     while(true){
         //判断是否所有音频帧结束
         audio_finish = true;
-
         audio_finish = works[0] == 0 && audioResampler->get_fifo_size() <= 0;
         if(audio_finish) break;
+
+        {
+            std::unique_lock<std::mutex> lock(m_mtx);
+            while(is_changing && !video_working){
+                cond.wait(lock);
+            }
+            audio_working = true;
+        }
 
         if(audioResampler->get_fifo_size() > 0){
             AVFrame *audio_frame = audioResampler->get_from_fifo(encoders[0]->get_audio_enc_ctx());
@@ -517,6 +522,12 @@ int Transcoder::dealing_audio(std::vector<int> &works) {
                 ret = encoders[0]->encode_audio(distributer, audio_frame, last_time);
                 if (ret < 0) return -1;
             } else break;
+        }
+
+        {
+            std::unique_lock<std::mutex> lock(m_mtx);
+            cond.notify_all();
+            audio_working = false;
         }
 
     }
@@ -548,6 +559,14 @@ int Transcoder::dealing_video(std::vector<int>& works){
         if(video_finish) break;
 
 
+        {
+            std::unique_lock<std::mutex> lock(m_mtx);
+            while(is_changing){
+                cond.wait(lock);
+            }
+            video_working = true;
+        }
+
         for(i = 0; i < inputNums; i++){
             if(!decoders[i]->is_video_queue_empty()){
                 av_frame_free(&last_frames[i]);
@@ -564,6 +583,12 @@ int Transcoder::dealing_video(std::vector<int>& works){
         }
 
         encoders[0]->encode_video(distributer, Utils::merge_way(width, height, merge_frames), last_time);
+
+        {
+            std::unique_lock<std::mutex> lock(m_mtx);
+            cond.notify_all();
+            video_working = false;
+        }
 
     }
 
@@ -589,7 +614,13 @@ int Transcoder::dealing_video(std::vector<int>& works){
 
 
 int Transcoder::change_input_stream(std::string &filename, int& stream_index) {
-
+    is_changing = true;
+    {
+        std::unique_lock<std::mutex> lock(m_mtx);
+        while(video_working || audio_working){
+            cond.wait(lock);
+        }
+    }
 
     if(works.empty()){
         av_log(nullptr, AV_LOG_ERROR, "vector-works now is empty.\n");
@@ -618,10 +649,16 @@ int Transcoder::change_input_stream(std::string &filename, int& stream_index) {
     decoders[stream_index]->change_fmt(IniterIs[stream_index]->change_fmt(filename));
 
 
-    if(stream_index == 0){
+    if (stream_index == 0) {
         audioResampler->reset_resampler(decoders[0]->get_audio_dec_ctx(), encoders[0]->get_audio_enc_ctx());
     }
 
+
+    {
+        std::unique_lock<std::mutex> lock(m_mtx);
+        cond.notify_all();
+        is_changing = false;
+    }
 
 
 

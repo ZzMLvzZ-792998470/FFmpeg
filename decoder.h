@@ -91,6 +91,10 @@ public:
             av_frame_free(&audio_queue.back());
             audio_queue.pop_back();
         }
+//        while(!audio_queue.empty()){
+//            av_frame_free(&audio_queue.front());
+//            audio_queue.pop_front();
+//        }
     }
 
 
@@ -99,6 +103,10 @@ public:
             av_frame_free(&video_queue.back());
             video_queue.pop_back();
         }
+//        while(!video_queue.empty()){
+//            av_frame_free(&video_queue.front());
+//            video_queue.pop_front();
+//        }
     }
 
 

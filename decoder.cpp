@@ -335,18 +335,8 @@ int Decoder::change_fmt(AVFormatContext *fmt_ctx) {
         }
     }
 
-
-//    std::deque<AVFrame *> audio_q = audio_queue.get_deque();
-//    std::deque<AVFrame *> video_q = video_queue.get_deque();
-
-
     if(!is_audio_queue_empty()) clear_audio();
     if(!is_video_queue_empty()) clear_video();
-
-
-//    audio_q = audio_queue.get_deque();
-//    video_q = video_queue.get_deque();
-
 
     is_changing = false;
     {
