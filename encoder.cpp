@@ -4,11 +4,26 @@
 
 extern std::mutex mtx2;
 
-Encoder::Encoder(int height, int width, int framerate, int samplerate) : height(height),
-                                                                width(width),
-                                                                framerate(framerate),
-                                                                samplerate(samplerate){
-}
+//Encoder::Encoder(int height, int width, int framerate, int samplerate) : height(height),
+//                                                                width(width),
+//                                                                framerate(framerate),
+//                                                                samplerate(samplerate){
+//}
+
+
+Encoder::Encoder(int width,
+                 int height,
+                 AVPixelFormat pix_fmt,
+                 int framerate,
+                 uint64_t channel_layout,
+                 AVSampleFormat sample_fmt,
+                 int samplerate) : width(width),
+                                    height(height),
+                                    pix_fmt(pix_fmt),
+                                    framerate(framerate),
+                                    channel_layout(channel_layout),
+                                    sample_fmt(sample_fmt),
+                                    samplerate(samplerate){}
 
 
 Encoder::~Encoder() {
@@ -53,7 +68,8 @@ int Encoder::init_video_encoder(AVFormatContext *ofmt_ctx) {
 
 
     /* take first format from list of supported formats */
-    enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+    //enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+    enc_ctx->pix_fmt = pix_fmt;
 
     /* video time_base can be set to whatever is handy and supported by encoder */
     enc_ctx->framerate = AVRational{framerate, 1};
@@ -110,11 +126,13 @@ int Encoder::init_audio_encoder(AVFormatContext *ofmt_ctx) {
     }
 
     enc_ctx->sample_rate = samplerate;
-    enc_ctx->channel_layout = 3;
+    //enc_ctx->channel_layout = 3;
+    enc_ctx->channel_layout = channel_layout;
     enc_ctx->channels = av_get_channel_layout_nb_channels(enc_ctx->channel_layout);
 
     /* take first format from list of supported formats */
     enc_ctx->sample_fmt = encoder->sample_fmts[0];
+
     enc_ctx->time_base = AVRational{1, enc_ctx->sample_rate};
     audio_enc_ctx = enc_ctx;
 
@@ -138,6 +156,7 @@ int Encoder::init_audio_encoder(AVFormatContext *ofmt_ctx) {
 
 
 int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t &last_time) {
+    std::unique_lock<std::mutex > lock(v_mtx);
    // int64_t func_time = Timer::getCurrentTime();
     int ret;
     int stream_index = 0;
@@ -196,6 +215,7 @@ int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame, int64_t 
 
 
 int Encoder::encode_audio(Distributer::ptr distributer, AVFrame *frame, int64_t &last_time) {
+    std::unique_lock<std::mutex > lock(a_mtx);
     int ret;
     int stream_index = 1;
     AVFrame *encode_frame = frame;
@@ -244,3 +264,101 @@ int Encoder::encode_audio(Distributer::ptr distributer, AVFrame *frame, int64_t 
     return 0;
 }
 
+
+
+int Encoder::encode_video_without_sleep(Distributer::ptr distributer) {
+    int ret;
+    int stream_index = 0;
+    AVFrame *encode_frame = FrameCreater::create_video_frame(height, width, pix_fmt, 0, 128, 128);
+    AVPacket *enc_pkt = av_packet_alloc();
+
+    if (encode_frame) encode_frame->pts = (int64_t)video_pts;
+    video_pts++;
+
+
+    ret = avcodec_send_frame(video_enc_ctx, encode_frame);
+    if (ret < 0) {
+        av_log(nullptr, AV_LOG_ERROR, "video_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+    av_frame_free(&encode_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(video_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+        enc_pkt->stream_index = stream_index;
+
+        enc_pkt->dts = enc_pkt->pts = current_time_video;
+        current_time_video += time_per_frame_video;
+
+
+//        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+//        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+//        av_log(nullptr, AV_LOG_INFO, "video packet.\n");
+        distributer->distribute(enc_pkt);
+
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+}
+
+
+
+int Encoder::encode_audio_without_sleep(Distributer::ptr distributer) {
+    int ret;
+    int stream_index = 1;
+    AVFrame *encode_frame = FrameCreater::create_audio_frame(samplerate, av_get_channel_layout_nb_channels(channel_layout), sample_fmt, 1024, (int)channel_layout);
+    AVPacket *enc_pkt = av_packet_alloc();
+
+
+    if(encode_frame) encode_frame->pts = audio_pts;
+    audio_pts += 1024;
+
+    ret = avcodec_send_frame(audio_enc_ctx, encode_frame);
+    if(ret < 0){
+        av_log(nullptr, AV_LOG_ERROR, "audio_frame: avcodec_send_frame failed.\n");
+        return ret;
+    }
+
+    av_frame_free(&encode_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(audio_enc_ctx, enc_pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+
+        enc_pkt->stream_index = stream_index;
+
+        enc_pkt->dts = enc_pkt->pts = current_time_audio;
+        current_time_audio += time_per_frame_audio;
+
+//        av_log(nullptr, AV_LOG_INFO, "pts: #%d ", enc_pkt->pts);
+//        av_log(nullptr, AV_LOG_INFO, " dts: #%d ", enc_pkt->dts);
+//        av_log(nullptr, AV_LOG_INFO, "audio packet.\n");
+
+
+        distributer->distribute(enc_pkt);
+    }
+
+    av_packet_free(&enc_pkt);
+    return 0;
+
+}
+
+void Encoder::synchronize(Distributer::ptr distributer) {
+    //std::lock_guard<std::mutex> lock(m_mtx);
+    std::unique_lock<std::mutex> lock1(v_mtx, std::defer_lock);
+    std::unique_lock<std::mutex> lock2(a_mtx, std::defer_lock);
+
+    std::lock(lock1, lock2);
+
+    double gap = std::abs(current_time_audio - current_time_video);
+    while(gap >= 60.0){
+        if(current_time_video > current_time_audio){
+            encode_audio_without_sleep(distributer);
+        } else{
+            encode_video_without_sleep(distributer);
+        }
+        gap = std::abs(current_time_audio - current_time_video);
+    }
+}

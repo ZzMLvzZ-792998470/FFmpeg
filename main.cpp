@@ -41,13 +41,13 @@ int main() {
 
 
      std::string output_file0 = "rtmp://localhost:1935/live/livestream";
-     //std::string output_file0 = "output.mp4";
- //    std::string output_file1 = "rtsp://localhost:8554/live/livestream";
+//     std::string output_file0 = "output.mp4";
+//     std::string output_file1 = "rtsp://localhost:8554/live/livestream";
 //    std::string output_file2 = "rtp://127.0.0.1:65564";
 //    std::string output_file3 = "rtp://127.0.0.1:65562";
 
      output_files.push_back(output_file0);
-  //   output_files.push_back(output_file1);
+//     output_files.push_back(output_file1);
 //     output_files.push_back(output_file2);
 //     output_files.push_back(output_file3);
 //    output_files.push_back(output_file4);
@@ -62,7 +62,7 @@ int main() {
 
 
 
-    Transcoder::ptr t(new Transcoder(input_files, output_files, 1280, 720, 30, 44100));
+    Transcoder::ptr t(new Transcoder(input_files, output_files, 1280, 720, AV_PIX_FMT_YUV420P, 30, 3, 44100, AV_SAMPLE_FMT_FLTP));
     t->init_transcoder();
 
     //t->init_transcode_old();

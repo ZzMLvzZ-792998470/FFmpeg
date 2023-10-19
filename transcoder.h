@@ -9,12 +9,7 @@
 #include "utils.h"
 #include "timer.h"
 #include "thread.h"
-
-#include "audio_resampler.h"
-
-//
-//#include <mutex>
-//#include <condition_variable>
+#include "FrameConvert.h"
 
 
 class Transcoder{
@@ -24,10 +19,13 @@ public:
                std::vector<std::string>& output_filenames,
                int width = 1920,
                int height = 1080,
+               AVPixelFormat pix_fmt = AV_PIX_FMT_YUV420P,
                int framerate = 30,
-               int samplerate = 44100);
+               uint64_t channel_layout = 3,
+               int samplerate = 44100,
+               AVSampleFormat sample_fmt = AV_SAMPLE_FMT_FLTP);
 
-    Transcoder(std::vector<std::string>& output_filenames, int width = 1920, int height = 1080, int framerate = 20, int samplerate = 44100);
+//    Transcoder(std::vector<std::string>& output_filenames, int width = 1920, int height = 1080, int framerate = 20, int samplerate = 44100);
 
 
     ~Transcoder();
@@ -39,14 +37,15 @@ public:
 
     int init_INiterIs();
 
+
+
     int init_Decoders();
 
     int init_Encoder(bool& initerO_has_inited, bool& encoder_has_inited);
 
     int init_IniterOs(bool& initerO_has_inited, bool& encoder_has_inited, std::vector<AVFormatContext *>& ofmt_ctxs);
 
-    int init_Fifo();
-
+//    int init_Fifo();
 
     int init_transcoder();
 
@@ -56,13 +55,13 @@ public:
      * */
 
 
-    int init_local_device_transcoder();
+//    int init_local_device_transcoder();
+//
+//    int reencode_local_device();
 
-    int reencode_local_device();
 
-
-    //把解码队列的音频数据写到fifo中
-    int add_to_fifo(std::vector<int>& works);
+//    //把解码队列的音频数据写到fifo中
+//    int add_to_fifo(std::vector<int>& works);
 
     //清理未使用音频解码队列
     int clear_audio_queues(std::vector<int>& works);
@@ -80,6 +79,12 @@ public:
     int change_input_stream(std::string& filename, int& stream_index);
 
 
+    int test_dealing_video(std::vector<int>& works);
+
+    int test_dealing_audio(std::vector<int>& works);
+
+
+
 private:
     std::vector<std::string> input_filenames;
     std::vector<std::string> output_filenames;
@@ -88,16 +93,23 @@ private:
     int width;
     int height;
 
+    AVPixelFormat pix_fmt;
     int framerate;
+    uint64_t channel_layout;
     int samplerate;
+    AVSampleFormat sample_fmt;
+
 
     int inputNums;
     int outputNums;
 
-    IniterD::ptr initerD;
+    //IniterD::ptr initerD;
+
     Distributer::ptr distributer;
 
-    AudioResampler::ptr audioResampler;
+    FrameConverter::ptr converter;
+
+   // AudioResampler::ptr audioResampler;
 
 
     std::vector<IniterI::ptr> IniterIs;
@@ -111,15 +123,10 @@ private:
     int video_packet_over = 0;
     int audio_packet_over = 0;
 
+    bool is_changing = false;
     std::mutex m_mtx;
-//    std::mutex audio_mtx;
-//    std::mutex video_mtx;
     std::condition_variable cond;
 
-    bool is_changing = false;
-
-    bool video_working = false;
-    bool audio_working = false;
 };
 
 

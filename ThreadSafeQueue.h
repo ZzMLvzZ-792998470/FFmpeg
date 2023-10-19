@@ -1,6 +1,12 @@
 #ifndef _THREADSAFEQUEUE_H
 #define _THREADSAFEQUEUE_H
 
+extern "C"{
+#include <libavformat/avformat.h>
+
+};
+
+
 #include <deque>
 #include <mutex>
 
@@ -20,19 +26,10 @@ public:
         deque_.push_back(std::move(item));
     }
 
-    void pop_front() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if(!deque_.empty()){
-            deque_.pop_front();
-        }
-    }
 
-    bool pop_back() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if(!deque_.empty()){
-            deque_.pop_back();
-        }
-    }
+    void pop_front();
+    void pop_back();
+
 
     bool empty() const {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -65,10 +62,6 @@ private:
     std::deque<T> deque_;
     mutable std::mutex mutex_;
 };
-
-
-
-
 
 
 

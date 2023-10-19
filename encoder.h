@@ -13,6 +13,7 @@ extern "C"{
 #include "writer.h"
 #include "timer.h"
 #include "distribute.h"
+#include "frame_create.h"
 
 #include <string>
 #include <memory>
@@ -22,7 +23,13 @@ extern "C"{
 class Encoder{
 public:
     typedef std::shared_ptr<Encoder> ptr;
-    Encoder(int height = 1080, int width = 1920, int framerate = 30, int samplerate = 44100);
+    Encoder(int width = 1920,
+            int height = 1080,
+            AVPixelFormat pix_fmt = AV_PIX_FMT_YUV420P,
+            int framerate = 30,
+            uint64_t channel_layout = 3,
+            AVSampleFormat sample_fmt = AV_SAMPLE_FMT_FLTP,
+            int samplerate = 44100);
 
     ~Encoder();
 
@@ -46,11 +53,28 @@ public:
     AVCodecContext *get_audio_enc_ctx() const {return audio_enc_ctx;}
 
 
+    double get_time_video(){return current_time_video;}
+
+    double get_time_audio(){return current_time_audio;}
+
+
+    int encode_video_without_sleep(Distributer::ptr distributer);
+
+    int encode_audio_without_sleep(Distributer::ptr dsitributer);
+
+    void synchronize(Distributer::ptr distributer);
+
+
 private:
-    int height = 1080;
-    int width = 1920;
-    int framerate = 30;
-    int samplerate = 44100;
+    int width;
+    int height;
+    AVPixelFormat pix_fmt;
+    int framerate;
+
+
+    uint64_t channel_layout;
+    AVSampleFormat sample_fmt;
+    int samplerate;
     AVCodecContext *audio_enc_ctx = nullptr, *video_enc_ctx = nullptr;
 
     double current_time_video = 0.0;
@@ -62,6 +86,9 @@ private:
     double time_per_frame_video;
     double time_per_frame_audio;
 
+
+    std::mutex v_mtx;
+    std::mutex a_mtx;
     std::mutex m_mtx;
     std::condition_variable cond;
 };
