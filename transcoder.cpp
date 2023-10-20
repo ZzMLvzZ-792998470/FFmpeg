@@ -262,7 +262,7 @@ int Transcoder::transcode() {
  * test part
  *
  * */
-    works[0] = 1;
+//    works[0] = 1;
 
 //    Thread thread_video(&Transcoder::test_dealing_video, this, std::ref(works));
 //
@@ -277,13 +277,13 @@ int Transcoder::transcode() {
 
     std::string file = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
     std::string file2 = "C://Users//ZZM//Desktop//素材//test.mp4";
-    int loop = 201;
+    int loop = 10001;
     int time = 0;
     int stream_index = 0;
     int64_t time_cur;
     //bool works = false;
     while(video_packet_over != 1 || audio_packet_over != 1){
-        if((time_cur = Timer::getCurrentTime() - func_time) >= 200000 && loop > 0) {
+        if((time_cur = Timer::getCurrentTime() - func_time) >= 20000 && loop > 0) {
             //func_time = Timer::getCurrentTime();
             if (time == 0) {
                 change_input_stream(file, stream_index);
@@ -295,8 +295,6 @@ int Transcoder::transcode() {
             loop--;
             func_time = Timer::getCurrentTime();
         }
-
-        //func_time = Timer::getCurrentTime();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -325,14 +323,12 @@ int Transcoder::dealing_audio(std::vector<int> &works) {
         if(audio_finish) break;
 
         if (!decoders[0]->is_audio_empty()) {
-//            ret = encoders[0]->encode_audio(distributer, av_frame_clone(decoders[0]->get_audio_front()), last_time);
-//            decoders[0]->pop_audio_front();
-         //   ret = encoders[0]->encode_audio(distributer, decoders[0]->test_get_audio(), last_time);
-            AVFrame *temp_frame = decoders[0]->test_get_audio();
+            AVFrame *temp_frame = decoders[0]->get_audio();
             if(temp_frame){
                 ret = encoders[0]->encode_audio(distributer, temp_frame, last_time);
+            } else{
+                encoders[0]->encode_audio(distributer, FrameCreater::create_audio_frame(), last_time);
             }
-
         }
     }
     encoders[0]->encode_audio(distributer, nullptr, last_time);
@@ -361,14 +357,13 @@ int Transcoder::dealing_video(std::vector<int>& works){
             video_finish = video_finish && (decoders[i]->is_video_empty()) && works[i] == 0;
         }
         if(video_finish) break;
+
         for (i = 0; i < inputNums; i++) {
             if (!decoders[0]->is_video_empty()) {
-                AVFrame * temp_frame = decoders[i]->test_get_video();
+                AVFrame * temp_frame = decoders[i]->get_video();
 
                 if(temp_frame) {
                     av_frame_free(&last_frames[i]);
-                    //last_frames[i] = av_frame_clone(decoders[i]->get_video_front());
-                    //last_frames[i] = decoders[i]->test_get_video();
                     last_frames[i] = temp_frame;
 
                     av_frame_free(&merge_frames[i]);
@@ -377,8 +372,6 @@ int Transcoder::dealing_video(std::vector<int>& works){
                     av_frame_free(&merge_frames[i]);
                     merge_frames[i] = av_frame_clone(last_frames[i]);
                 }
-                //merge_frames[i] = av_frame_clone(decoders[i]->get_video_front());
-                //decoders[i]->pop_video_front();
             } else {
                 av_frame_free(&merge_frames[i]);
                 merge_frames[i] = av_frame_clone(last_frames[i]);
@@ -412,6 +405,7 @@ int Transcoder::dealing_video(std::vector<int>& works){
 int Transcoder::change_input_stream(std::string &filename, int& stream_index) {
     //is_changing = true;
 
+
     if(works.empty()){
         av_log(nullptr, AV_LOG_ERROR, "vector-works now is empty.\n");
         return 0;
@@ -424,7 +418,8 @@ int Transcoder::change_input_stream(std::string &filename, int& stream_index) {
 
     decoders[stream_index]->change_fmt(IniterIs[stream_index]->change_fmt(filename));
 
-    encoders[0]->synchronize(distributer);
+   // is_changing = false;
+    //encoders[0]->synchronize(distributer);
 
 //    if(works[stream_index] == 0){
 //        works[stream_index] = 1;

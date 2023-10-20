@@ -130,8 +130,6 @@ int Decoder::decode_high2low() {
             }
         }
 
-
-
         int stream_index = packet->stream_index;
         if (stream_index == 0) ret = avcodec_send_packet(video_dec_ctx, packet);
         else ret = avcodec_send_packet(audio_dec_ctx, packet);
@@ -167,14 +165,9 @@ int Decoder::decode_high2low() {
                     }
 
                     video_queue.push_back(converter->convert(av_frame_clone(dec_frame)));
-
-                    //video_queue.push_back(av_frame_clone(converter->convert(dec_frame)));
-                    //video_queue.push_back(av_frame_clone(dec_frame));
                 }
             } else {
                 if(using_audio) audio_queue.push_back(converter->convert(av_frame_clone(dec_frame)));
-                //audio_queue.push_back(av_frame_clone(dec_frame));
-               // audio_queue.push_back(av_frame_clone(dec_frame));
             }
             av_frame_unref(dec_frame);
         }
@@ -241,8 +234,6 @@ int Decoder::decode_low2high() {
                         av_usleep(1000);
                     }
 
-
-
                     /*
                      *  convert and push into queue
                      *
@@ -264,7 +255,6 @@ int Decoder::decode_low2high() {
                 }
 
                 video_queue.push_back(converter->convert(av_frame_clone(prev_frame)));
-                //video_queue.push_back(av_frame_clone(prev_frame));
                 if(count < 1.0f){
                     av_frame_unref(prev_frame);
                     av_frame_free(&prev_frame);
@@ -280,6 +270,7 @@ int Decoder::decode_low2high() {
 
 
 int Decoder::change_fmt(AVFormatContext *fmt_ctx) {
+    int64_t func_time = Timer::getCurrentTime();
     is_changing = true;
     std::unique_lock<std::mutex> lock(m_mtx);
     int ret;
@@ -299,6 +290,7 @@ int Decoder::change_fmt(AVFormatContext *fmt_ctx) {
     }
     if(using_audio) converter->reset_converter(get_audio_dec_ctx()->channel_layout, get_audio_dec_ctx()->sample_rate, get_audio_dec_ctx()->sample_fmt);
 
+    av_log(nullptr, AV_LOG_INFO, "Decoder::change_fmt() using time: %dms.\n", (Timer::getCurrentTime() - func_time) / 1000);
 
     is_changing = false;
 
@@ -362,24 +354,8 @@ bool Decoder::is_video_empty() {
 
 
 
-
-void Decoder::clear_audio(){
-    std::lock_guard<std::mutex> lock(q_mtx);
-    while(!is_audio_empty()){
-        pop_audio_back();
-    }
-}
-
-
-void Decoder::clear_video(){
-    std::lock_guard<std::mutex> lock(q_mtx);
-    while(!is_video_empty()){
-        pop_video_back();
-    }
-}
-
-AVFrame* Decoder::test_get_audio() {
-    std::lock_guard<std::mutex> lock(q_mtx);
+AVFrame* Decoder::get_audio() {
+    std::lock_guard<std::mutex> lock(a_mtx);
     if(!audio_queue.empty()){
         AVFrame* frame = av_frame_clone(audio_queue.front());
         audio_queue.pop_front();
@@ -389,8 +365,8 @@ AVFrame* Decoder::test_get_audio() {
 }
 
 
-AVFrame* Decoder::test_get_video() {
-    std::lock_guard<std::mutex> lock(q_mtx);
+AVFrame* Decoder::get_video() {
+    std::lock_guard<std::mutex> lock(v_mtx);
     if(!video_queue.empty()){
         AVFrame* frame = av_frame_clone(video_queue.front());
         video_queue.pop_front();
@@ -398,3 +374,25 @@ AVFrame* Decoder::test_get_video() {
     }
     return nullptr;
 }
+
+
+
+
+void Decoder::clear_audio() {
+    std::lock_guard<std::mutex> lock(a_mtx);
+    while(!is_audio_empty()){
+        //pop_audio_back();
+        audio_queue.pop_back();
+    }
+}
+
+
+
+void Decoder::clear_video() {
+    std::lock_guard<std::mutex> lock(v_mtx);
+    while(!is_video_empty()){
+       // pop_video_back();
+       video_queue.pop_back();
+    }
+}
+

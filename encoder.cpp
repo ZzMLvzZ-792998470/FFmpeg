@@ -2,15 +2,6 @@
 
 #include <mutex>
 
-extern std::mutex mtx2;
-
-//Encoder::Encoder(int height, int width, int framerate, int samplerate) : height(height),
-//                                                                width(width),
-//                                                                framerate(framerate),
-//                                                                samplerate(samplerate){
-//}
-
-
 Encoder::Encoder(int width,
                  int height,
                  AVPixelFormat pix_fmt,
@@ -346,14 +337,13 @@ int Encoder::encode_audio_without_sleep(Distributer::ptr distributer) {
 }
 
 void Encoder::synchronize(Distributer::ptr distributer) {
-    //std::lock_guard<std::mutex> lock(m_mtx);
     std::unique_lock<std::mutex> lock1(v_mtx, std::defer_lock);
     std::unique_lock<std::mutex> lock2(a_mtx, std::defer_lock);
 
     std::lock(lock1, lock2);
 
     double gap = std::abs(current_time_audio - current_time_video);
-    while(gap >= 60.0){
+    if(gap >= 200.0){
         if(current_time_video > current_time_audio){
             encode_audio_without_sleep(distributer);
         } else{

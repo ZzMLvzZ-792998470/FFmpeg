@@ -75,14 +75,16 @@ public:
     //切流时改变fmt_ctx
     int change_fmt(AVFormatContext* fmt_ctx);
 
-    void clear_video();
+
+    AVFrame* get_audio();
+
+    AVFrame* get_video();
+
 
     void clear_audio();
 
+    void clear_video();
 
-    AVFrame* test_get_audio();
-
-    AVFrame* test_get_video();
 
 
 private:
@@ -110,9 +112,9 @@ private:
     ThreadSafeDeque<AVFrame* > audio_queue = {};
 
     std::mutex m_mtx;
-    std::mutex q_mtx;
+    std::mutex a_mtx;
+    std::mutex v_mtx;
 
-    std::condition_variable cond;
     bool is_changing = false;
 
 };

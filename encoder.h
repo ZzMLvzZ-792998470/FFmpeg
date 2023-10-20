@@ -86,11 +86,8 @@ private:
     double time_per_frame_video;
     double time_per_frame_audio;
 
-
     std::mutex v_mtx;
     std::mutex a_mtx;
-    std::mutex m_mtx;
-    std::condition_variable cond;
 };
 
 
