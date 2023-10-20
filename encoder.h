@@ -46,6 +46,12 @@ public:
     int encode_audio(Distributer::ptr distributer, AVFrame* frame, int64_t& last_time);
 
 
+    int test_encode_video(Distributer::ptr distributer, AVFrame* frame);
+
+
+    int test_encode_audio(Distributer::ptr distributer, AVFrame* frame);
+
+
     //获取视频编码器上下文
     AVCodecContext *get_video_enc_ctx() const {return video_enc_ctx;}
 
@@ -85,6 +91,13 @@ private:
 
     double time_per_frame_video;
     double time_per_frame_audio;
+
+    int64_t last_video_time = 0;
+    int64_t last_audio_time = 0;
+
+    int64_t standard_video_time = 0;
+    int64_t standard_audio_time = 0;
+
 
     std::mutex v_mtx;
     std::mutex a_mtx;

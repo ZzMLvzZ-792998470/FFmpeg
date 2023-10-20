@@ -308,3 +308,32 @@ Initers(多个)----->解码-----|          取数据帧dealing(得到frame) ----
 
 
 ```
+## 时间刻度优化
+```angular2html
+
+before:
+    while(time_per_frame_video * 1000 - (getCurrentTime() - last_time) > 1000){{
+         //sleep...
+    }}
+
+
+now:
+    //需要记录实际时间、标准时间 real/standard
+
+    real = (getCurrentTime() - last_time) + real;
+    
+    standard = standard + time_per_frame_video
+    
+    if(standard > real){{
+        //sleep...
+    }}
+
+    
+
+
+
+
+
+
+```
+

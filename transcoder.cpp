@@ -277,13 +277,13 @@ int Transcoder::transcode() {
 
     std::string file = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
     std::string file2 = "C://Users//ZZM//Desktop//素材//test.mp4";
-    int loop = 10001;
+    int loop = 201;
     int time = 0;
     int stream_index = 0;
     int64_t time_cur;
     //bool works = false;
     while(video_packet_over != 1 || audio_packet_over != 1){
-        if((time_cur = Timer::getCurrentTime() - func_time) >= 20000 && loop > 0) {
+        if((time_cur = Timer::getCurrentTime() - func_time) >= 80000 && loop > 0) {
             //func_time = Timer::getCurrentTime();
             if (time == 0) {
                 change_input_stream(file, stream_index);
@@ -325,13 +325,16 @@ int Transcoder::dealing_audio(std::vector<int> &works) {
         if (!decoders[0]->is_audio_empty()) {
             AVFrame *temp_frame = decoders[0]->get_audio();
             if(temp_frame){
-                ret = encoders[0]->encode_audio(distributer, temp_frame, last_time);
-            } else{
-                encoders[0]->encode_audio(distributer, FrameCreater::create_audio_frame(), last_time);
+                //ret = encoders[0]->encode_audio(distributer, temp_frame, last_time);
+                encoders[0]->test_encode_audio(distributer, temp_frame);
             }
+//            else{
+//                encoders[0]->encode_audio(distributer, FrameCreater::create_audio_frame(), last_time);
+//            }
         }
     }
-    encoders[0]->encode_audio(distributer, nullptr, last_time);
+    //encoders[0]->encode_audio(distributer, nullptr, last_time);
+    encoders[0]->test_encode_audio(distributer, nullptr);
 
     audio_packet_over = 1;
     return 0;
@@ -378,11 +381,12 @@ int Transcoder::dealing_video(std::vector<int>& works){
             }
         }
 
-        encoders[0]->encode_video(distributer, Utils::merge_way(width, height, merge_frames), last_time);
+        //encoders[0]->encode_video(distributer, Utils::merge_way(width, height, merge_frames), last_time);
+        encoders[0]->test_encode_video(distributer, Utils::merge_way(width, height, merge_frames));
     }
 
-    encoders[0]->encode_video(distributer, nullptr, last_time);
-
+    //encoders[0]->encode_video(distributer, nullptr, last_time);
+    encoders[0]->test_encode_video(distributer, nullptr);
 
     for(int i = 0; i < inputNums; i++){
         av_frame_free(&last_frames[i]);
