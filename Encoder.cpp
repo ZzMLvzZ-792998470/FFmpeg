@@ -1,4 +1,4 @@
-#include "encoder.h"
+#include "Encoder.h"
 
 #include <mutex>
 
@@ -355,7 +355,7 @@ void Encoder::synchronize(Distributer::ptr distributer) {
 
 
 
-int Encoder::test_encode_video(Distributer::ptr distributer, AVFrame *frame) {
+int Encoder::encode_video(Distributer::ptr distributer, AVFrame *frame) {
     std::unique_lock<std::mutex > lock(v_mtx);
     int ret;
     int stream_index = 0;
@@ -418,7 +418,7 @@ int Encoder::test_encode_video(Distributer::ptr distributer, AVFrame *frame) {
 
 
 
-int Encoder::test_encode_audio(Distributer::ptr distributer, AVFrame *frame) {
+int Encoder::encode_audio(Distributer::ptr distributer, AVFrame *frame) {
     std::unique_lock<std::mutex > lock(a_mtx);
     int ret;
     int stream_index = 1;

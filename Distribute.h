@@ -13,8 +13,8 @@ extern "C"{
 
 
 
-#include "writer.h"
-#include "thread.h"
+#include "Writer.h"
+#include "Thread.h"
 
 
 

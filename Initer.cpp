@@ -1,4 +1,4 @@
-#include "initer.h"
+#include "Initer.h"
 
 Initer::~Initer(){}
 
@@ -101,8 +101,6 @@ int IniterD::init_fmt() {
 
 }
 
-
-
 int IniterD::init_device_vfmt_ctx() {
 
     AVDictionary* options = nullptr;
@@ -129,8 +127,6 @@ int IniterD::init_device_vfmt_ctx() {
     return 0;
 }
 
-
-
 int IniterD::init_device_afmt_ctx() {
     audio_input_fmt = av_find_input_format("dshow");
 
@@ -156,8 +152,6 @@ int IniterD::init_device_afmt_ctx() {
 }
 
 
-
-
 AVFormatContext* IniterD::get_fmt_ctx() {
     //return nullptr;
     return fmt_ctx;
@@ -170,8 +164,6 @@ AVFormatContext* IniterD::get_afmt_ctx() {
 AVFormatContext* IniterD::get_vfmt_ctx() {
     return vfmt_ctx;
 }
-
-
 
 void IniterD::show_devices() {
     const AVInputFormat* inputFormat = av_input_video_device_next(nullptr);
@@ -187,7 +179,6 @@ void IniterD::show_devices() {
     }
 
 }
-
 
 void IniterD::show_dummy_device_info(const std::string& device_name) {
     AVDictionary* options = nullptr;
@@ -206,6 +197,8 @@ void IniterD::show_dummy_device_info(const std::string& device_name) {
     //avformat_close_input(&fmt_ctx);
     //printf("========================\n");
 }
+
+
 
 
 
@@ -256,8 +249,6 @@ int IniterO::ofmt_create_stream(AVCodecContext *enc_ctx) {
         return AVERROR_UNKNOWN;
     }
 
-//    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
-//        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
     ret = avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
     if (ret < 0) {

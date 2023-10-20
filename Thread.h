@@ -1,6 +1,6 @@
 #ifndef _THREAD_H
 #define _THREAD_H
-#include "noncopyable.h"
+#include "Noncopyable.h"
 
 #include <thread>
 #include <functional>

@@ -10,10 +10,9 @@ extern "C"{
 
 #include <memory>
 #include <vector>
-#include <condition_variable>
 #include <memory>
 
-#include "timer.h"
+#include "Timer.h"
 #include "ThreadSafeQueue.h"
 #include "FrameConvert.h"
 
@@ -48,6 +47,8 @@ public:
     //使用音频队列
     void use_audio();
 
+    bool is_using_audio();
+
     //获取音频队列front
     AVFrame *get_audio_front();
 
@@ -60,11 +61,11 @@ public:
     //弹出视频队列front
     void pop_video_front();
 
-
+    //弹出音频队列back
     void pop_audio_back();
 
+    //弹出视频队列back
     void pop_video_back();
-
 
     //判断视频队列是否为空
     bool is_audio_empty();
@@ -75,14 +76,16 @@ public:
     //切流时改变fmt_ctx
     int change_fmt(AVFormatContext* fmt_ctx);
 
-
+    //获取音频队列头元素并移除
     AVFrame* get_audio();
 
+    //获取视频队列头元素并移除
     AVFrame* get_video();
 
-
+    //清理音频队列
     void clear_audio();
 
+    //清理视频队列
     void clear_video();
 
 
@@ -105,7 +108,6 @@ private:
     int audio_queue_cache = 30;
 
     AVFrame *prev_frame = nullptr;
-
     bool using_audio = false;
 
     ThreadSafeDeque<AVFrame* > video_queue = {};
@@ -116,7 +118,6 @@ private:
     std::mutex v_mtx;
 
     bool is_changing = false;
-
 };
 
 

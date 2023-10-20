@@ -10,10 +10,10 @@ extern "C"{
 }
 
 
-#include "writer.h"
-#include "timer.h"
-#include "distribute.h"
-#include "frame_create.h"
+#include "Writer.h"
+#include "Timer.h"
+#include "Distribute.h"
+#include "FrameCreater.h"
 
 #include <string>
 #include <memory>
@@ -45,11 +45,11 @@ public:
     //编码音频帧
     int encode_audio(Distributer::ptr distributer, AVFrame* frame, int64_t& last_time);
 
+    //编码视频帧
+    int encode_video(Distributer::ptr distributer, AVFrame* frame);
 
-    int test_encode_video(Distributer::ptr distributer, AVFrame* frame);
-
-
-    int test_encode_audio(Distributer::ptr distributer, AVFrame* frame);
+    //编码音频帧
+    int encode_audio(Distributer::ptr distributer, AVFrame* frame);
 
 
     //获取视频编码器上下文

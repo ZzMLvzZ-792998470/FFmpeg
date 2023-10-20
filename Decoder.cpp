@@ -1,4 +1,4 @@
-#include "decoder.h"
+#include "Decoder.h"
 #include <iostream>
 
 Decoder::Decoder(int set_framerate, AVFormatContext *ifmt_ctx, FrameConverter::ptr converter) :
@@ -12,13 +12,9 @@ Decoder::Decoder(int set_framerate, AVFormatContext *ifmt_ctx, FrameConverter::p
 
 Decoder::~Decoder() {
     ifmt_ctx = nullptr;
-//    while(!audio_queue.empty()){
-//        pop_audio();
-//    }
-//
-//    while(!video_queue.empty()){
-//        pop_video();
-//    }
+
+    clear_video();
+    clear_audio();
 
     if(audio_dec_ctx) avcodec_free_context(&audio_dec_ctx);
     if(video_dec_ctx) avcodec_free_context(&video_dec_ctx);
@@ -234,10 +230,6 @@ int Decoder::decode_low2high() {
                         av_usleep(1000);
                     }
 
-                    /*
-                     *  convert and push into queue
-                     *
-                     * */
                     video_queue.push_back(converter->convert(av_frame_clone(dec_frame)));
                     if(count + frameratio >= 1.0f) prev_frame = av_frame_clone(dec_frame);
                     count += frameratio;
@@ -312,21 +304,29 @@ void Decoder::use_audio() {
     using_audio = true;
 }
 
+bool Decoder::is_using_audio() {
+    return using_audio;
+}
+
 
 void Decoder::pop_audio_front() {
+    //std::lock_guard<std::mutex> lock(a_mtx);
     if(!is_audio_empty()) audio_queue.pop_front();
 }
 
 void Decoder::pop_video_front() {
+    //std::lock_guard<std::mutex> lock(v_mtx);
     if(!is_video_empty()) video_queue.pop_front();
 }
 
 void Decoder::pop_audio_back() {
+    //std::lock_guard<std::mutex> lock(a_mtx);
     if(!is_audio_empty()) audio_queue.pop_back();
 }
 
 
 void Decoder::pop_video_back() {
+    //std::lock_guard<std::mutex> lock(v_mtx);
     if(!is_video_empty()) video_queue.pop_back();
 }
 
@@ -334,21 +334,25 @@ void Decoder::pop_video_back() {
 
 
 AVFrame *Decoder::get_audio_front(){
+    //std::lock_guard<std::mutex> lock(a_mtx);
     return is_audio_empty() ? nullptr : audio_queue.front();
 }
 
 
 AVFrame *Decoder::get_video_front(){
+    //std::lock_guard<std::mutex> lock(v_mtx);
     return is_video_empty() ? nullptr : video_queue.front();
 }
 
 
 
 bool Decoder::is_audio_empty() {
+    //std::lock_guard<std::mutex> lock(a_mtx);
     return audio_queue.empty();
 }
 
 bool Decoder::is_video_empty() {
+    //std::lock_guard<std::mutex> lock(v_mtx);
     return video_queue.empty();
 }
 
@@ -380,8 +384,7 @@ AVFrame* Decoder::get_video() {
 
 void Decoder::clear_audio() {
     std::lock_guard<std::mutex> lock(a_mtx);
-    while(!is_audio_empty()){
-        //pop_audio_back();
+    while(!audio_queue.empty()){
         audio_queue.pop_back();
     }
 }
@@ -390,8 +393,7 @@ void Decoder::clear_audio() {
 
 void Decoder::clear_video() {
     std::lock_guard<std::mutex> lock(v_mtx);
-    while(!is_video_empty()){
-       // pop_video_back();
+    while(!video_queue.empty()){
        video_queue.pop_back();
     }
 }

@@ -1,4 +1,4 @@
-#include "distribute.h"
+#include "Distribute.h"
 
 Distributer::Distributer(std::vector<AVFormatContext *> &ofmt_ctxs) : ofmt_ctxs(ofmt_ctxs) {
 

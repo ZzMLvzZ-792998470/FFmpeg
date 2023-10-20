@@ -41,11 +41,27 @@ public:
                        int src_sample_rate,
                        AVSampleFormat src_sample_fmt);
 
-
     int reset_converter(uint64_t src_channel_layout, int src_sample_rate, AVSampleFormat src_sample_fmt);
 
 
     AVFrame* convert(AVFrame* frame);
+
+
+    static AVFrame* change_frame_size(int width, int height, AVFrame* frame);
+
+
+    static AVFrame* merge_frames(int backround_width, int backround_height, std::vector<AVFrame* >& frames);
+
+
+    static cv::Mat avframe2Mat(int width, int height, AVFrame *frame);
+
+    //Mat -----> AVFrame
+    static AVFrame* Mat2avframe(int& cols, int& height, cv::Mat img);
+
+
+    static void add_pic2pic(cv::Mat& src_mat, cv::Mat& added_mat,
+                     int col_point = 200, int row_point = 200,
+                     double alpha = 0.1, double beta = 0.9, double gamma = 1.0);
 
 
 

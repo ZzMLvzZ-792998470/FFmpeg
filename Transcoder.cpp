@@ -1,19 +1,4 @@
-#include "transcoder.h"
-
-//Transcoder::Transcoder(std::vector<std::string>& input_filenames,
-//                       std::vector<std::string>& output_filenames,
-//                       int width,
-//                       int height,
-//                       int framerate,
-//                       int samplerate) :input_filenames(input_filenames),
-//                                        output_filenames(output_filenames),
-//                                        width(width),
-//                                        height(height),
-//                                        framerate(framerate),
-//                                        samplerate(samplerate),
-//                                        inputNums(input_filenames.size()),
-//                                        outputNums(output_filenames.size()){
-//}
+#include "Transcoder.h"
 
 
 Transcoder::Transcoder(std::vector<std::string> &input_filenames,
@@ -275,38 +260,34 @@ int Transcoder::transcode() {
 
 
 
-    std::string file = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
-    std::string file2 = "C://Users//ZZM//Desktop//素材//test.mp4";
-    int loop = 201;
-    int time = 0;
-    int stream_index = 0;
-    int64_t time_cur;
+//    std::string file = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
+//    std::string file2 = "C://Users//ZZM//Desktop//素材//test.mp4";
+//    int loop = 2001;
+//    int time = 0;
+//    int stream_index = 0;
+//    int64_t time_cur;
     //bool works = false;
     while(video_packet_over != 1 || audio_packet_over != 1){
-        if((time_cur = Timer::getCurrentTime() - func_time) >= 80000 && loop > 0) {
-            //func_time = Timer::getCurrentTime();
-            if (time == 0) {
-                change_input_stream(file, stream_index);
-                time = 1;
-            } else {
-                change_input_stream(file2, stream_index);
-                time = 0;
-            }
-            loop--;
-            func_time = Timer::getCurrentTime();
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//        if((time_cur = Timer::getCurrentTime() - func_time) >= 20000 && loop > 0) {
+//            //func_time = Timer::getCurrentTime();
+//            if (time == 0) {
+//                change_input_stream(file, stream_index);
+//                time = 1;
+//            } else {
+//                change_input_stream(file2, stream_index);
+//                time = 0;
+//            }
+//            loop--;
+//            func_time = Timer::getCurrentTime();
+//        }
+        av_usleep(1000);
     }
 
     for(i = 0; i < outputNums; i++){
         Writer::write_tail(IniterOs[i]->get_fmt_ctx());
     }
 
-
     return 0;
-
-
 }
 
 
@@ -325,16 +306,12 @@ int Transcoder::dealing_audio(std::vector<int> &works) {
         if (!decoders[0]->is_audio_empty()) {
             AVFrame *temp_frame = decoders[0]->get_audio();
             if(temp_frame){
-                //ret = encoders[0]->encode_audio(distributer, temp_frame, last_time);
-                encoders[0]->test_encode_audio(distributer, temp_frame);
+                encoders[0]->encode_audio(distributer, temp_frame);
             }
-//            else{
-//                encoders[0]->encode_audio(distributer, FrameCreater::create_audio_frame(), last_time);
-//            }
         }
     }
     //encoders[0]->encode_audio(distributer, nullptr, last_time);
-    encoders[0]->test_encode_audio(distributer, nullptr);
+    encoders[0]->encode_audio(distributer, nullptr);
 
     audio_packet_over = 1;
     return 0;
@@ -364,11 +341,9 @@ int Transcoder::dealing_video(std::vector<int>& works){
         for (i = 0; i < inputNums; i++) {
             if (!decoders[0]->is_video_empty()) {
                 AVFrame * temp_frame = decoders[i]->get_video();
-
                 if(temp_frame) {
                     av_frame_free(&last_frames[i]);
                     last_frames[i] = temp_frame;
-
                     av_frame_free(&merge_frames[i]);
                     merge_frames[i] = av_frame_clone(last_frames[i]);
                 } else{
@@ -380,13 +355,10 @@ int Transcoder::dealing_video(std::vector<int>& works){
                 merge_frames[i] = av_frame_clone(last_frames[i]);
             }
         }
-
-        //encoders[0]->encode_video(distributer, Utils::merge_way(width, height, merge_frames), last_time);
-        encoders[0]->test_encode_video(distributer, Utils::merge_way(width, height, merge_frames));
+        encoders[0]->encode_video(distributer, FrameConverter::merge_frames(width, height, merge_frames));
     }
 
-    //encoders[0]->encode_video(distributer, nullptr, last_time);
-    encoders[0]->test_encode_video(distributer, nullptr);
+    encoders[0]->encode_video(distributer, nullptr);
 
     for(int i = 0; i < inputNums; i++){
         av_frame_free(&last_frames[i]);
@@ -422,25 +394,17 @@ int Transcoder::change_input_stream(std::string &filename, int& stream_index) {
 
     decoders[stream_index]->change_fmt(IniterIs[stream_index]->change_fmt(filename));
 
-   // is_changing = false;
-    //encoders[0]->synchronize(distributer);
-
+    //某路流已经结束
 //    if(works[stream_index] == 0){
 //        works[stream_index] = 1;
-//        //一号流已经结束 其他流未结束 需要重启1号音频
-//        if(stream_index == 0){
-//            Thread thread_decode(&Decoder::decode, decoders[stream_index], std::ref(works[stream_index]));
-//            thread_decode.detach();
-//            Thread thread_fifo(&Transcoder::add_to_fifo, this, std::ref(works));
-//            Thread thread_audio(&Transcoder::dealing_audio, this, std::ref(works));
-//            audio_packet_over = 0;
-//        } else{
-//            bool others_finish = true;
-//            for(int i = 1; i < inputNums; i++){
-//                others_finish = others_finish && works[i] == 0;
-//            }
-//            if(others_finish) Thread thread_clear(&Transcoder::clear_audio_queues, this, std::ref(works));
-//        }
+//
+//        Thread thread_deocde(&Decoder::decode, decoders[stream_index], std::ref(works[stream_index]));
+//        thread_deocde.detach();
+//
+//        if(stream_index == 0) decoders[stream_index]->use_audio();
+//        audio_packet_over = 0;
+//
+//        Thread dealing_audio(&Transcoder::dealing_audio, this, std::ref(works));
 //    }
 
     return 0;
