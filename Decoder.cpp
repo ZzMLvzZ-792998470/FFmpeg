@@ -77,13 +77,14 @@ int Decoder::init_decoder() {
 
 int Decoder::decode(int& work) {
     int ret;
-    //实际帧率大于设置的帧率，需要丢帧
+
     while(true) {
+        //实际帧率大于设置的帧率，需要丢帧
         if (real_framerate >= set_framerate) {
             frameratio = (real_framerate - set_framerate) * 1.0 / set_framerate;
             ret = decode_high2low();
             if (ret < 0) {
-                av_log(nullptr, AV_LOG_ERROR, "decode_high2low failed.\n");
+                av_log(nullptr, AV_LOG_ERROR, "Decoder::decode_high2low() failed.\n");
             }
             if(ret == 0) break;
             if(ret == 1) continue;
@@ -92,7 +93,7 @@ int Decoder::decode(int& work) {
             frameratio = (set_framerate - real_framerate) * 1.0 / real_framerate;
             ret = decode_low2high();
             if (ret < 0) {
-                av_log(nullptr, AV_LOG_ERROR, "decode_low2high failed.\n");
+                av_log(nullptr, AV_LOG_ERROR, "Decoder::decode_low2high() failed.\n");
             }
             if(ret == 0) break;
             if(ret == 1) continue;
@@ -186,7 +187,6 @@ int Decoder::decode_low2high() {
             return 1;
         }
         std::unique_lock<std::mutex> lock(m_mtx);
-        //is_working = true;
         if (count < 1.0f) {
             if ((ret = av_read_frame(ifmt_ctx, packet)) < 0) {
                 if (time > 0) {
@@ -283,7 +283,7 @@ int Decoder::change_fmt(AVFormatContext *fmt_ctx) {
     if (video_dec_ctx) avcodec_free_context(&video_dec_ctx);
     ret = init_decoder();
     if (ret < 0) {
-        av_log(nullptr, AV_LOG_ERROR, "Decoder::change_fmt failed.\n");
+        av_log(nullptr, AV_LOG_ERROR, "Decoder::change_fmt() failed.\n");
         return ret;
     }
     if(using_audio) converter->reset_converter(get_audio_dec_ctx()->channel_layout, get_audio_dec_ctx()->sample_rate, get_audio_dec_ctx()->sample_fmt);

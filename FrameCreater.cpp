@@ -11,10 +11,9 @@ FrameCreater::~FrameCreater(){
 
 AVFrame *FrameCreater::create_video_frame(int height, int width, int format, int y, int u, int v){
     AVFrame* frame = av_frame_alloc();
-    if (!frame) {
-        // 处理内存分配失败的情况
+    if (!frame)
         return nullptr;
-    }
+
 
     frame->format = format;
     frame->width = width;
@@ -22,7 +21,6 @@ AVFrame *FrameCreater::create_video_frame(int height, int width, int format, int
 
     int ret = av_frame_get_buffer(frame, 0);  // 分配帧数据内存
     if (ret < 0) {
-        // 处理内存分配失败的情况
         av_frame_free(&frame);
         return nullptr;
     }

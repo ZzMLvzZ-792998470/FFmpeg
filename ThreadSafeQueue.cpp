@@ -1,6 +1,9 @@
 #include "ThreadSafeQueue.h"
 
 
+/*
+ * 特化AVFrame* 类型的一些操作 主要是为了free frame
+ * */
 
 
 template<typename T>

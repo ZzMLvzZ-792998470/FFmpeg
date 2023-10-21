@@ -128,8 +128,8 @@ AVFrame* FrameConverter::convert(AVFrame *frame) {
         frame = nullptr;
         sws_freeContext(sws_ctx);
         return dst_frame;
-
-    } else{ //audio
+    //audio
+    } else{
         uint8_t **audio_data_buffer = nullptr;
         av_samples_alloc_array_and_samples(&audio_data_buffer,
                                            nullptr,

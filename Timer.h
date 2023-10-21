@@ -9,9 +9,7 @@ extern "C"{
 
 class Timer{
 public:
-    static int64_t getCurrentTime(){
-        return av_gettime();
-    }
+    static int64_t getCurrentTime();
 
 
 private:

@@ -26,19 +26,19 @@ public:
 
     ~Transcoder();
 
-
-    /*
-     * 分开初始化的函数
-     * */
-
+    //初始化IniterI
     int init_INiterIs();
 
+    //初始化解码器
     int init_Decoders();
 
+    //初始化编码器
     int init_Encoder(bool& initerO_has_inited, bool& encoder_has_inited);
 
+    //初始化IniterO
     int init_IniterOs(bool& initerO_has_inited, bool& encoder_has_inited, std::vector<AVFormatContext *>& ofmt_ctxs);
 
+    //初始化transcoder
     int init_transcoder();
 
     //处理音频数据
@@ -52,10 +52,6 @@ public:
 
     //切流操作
     int change_input_stream(std::string& filename, int& stream_index);
-
-    //修改编码器参数
-    int change_enc_ctx();
-
 
 private:
     std::vector<std::string> input_filenames;
@@ -76,7 +72,6 @@ private:
 
 
     Distributer::ptr distributer;
-
     FrameConverter::ptr converter;
 
 

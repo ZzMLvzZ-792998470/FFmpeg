@@ -8,16 +8,10 @@ Distributer::Distributer(std::vector<AVFormatContext *> &ofmt_ctxs) : ofmt_ctxs(
     int time = 0;
     for(int i = 0; i < ofmt_ctxs.size(); i++){
         if(std::string(ofmt_ctxs[i]->oformat->name) == "rtp"){
-            if(time == 0){
-                fmt_type[i] = 1;
-                time = 1;
-            } else{
-                fmt_type[i] = 2;
-                time = 0;
-            }
-        } else{
-            fmt_type[i] = 0;
-        }
+            fmt_type[i] = time ? 2 : 1;
+            time = time ? 0 : 1;
+
+        } else fmt_type[i] = 0;
     }
 }
 
@@ -26,7 +20,11 @@ Distributer::~Distributer() {
     while(!ofmt_ctxs.empty()){
         ofmt_ctxs.back() = nullptr;
         ofmt_ctxs.pop_back();
+        pkts.pop_back();
+        fmt_type.pop_back();
+        mtxs.pop_back();
     }
+
 }
 
 
@@ -38,7 +36,6 @@ int Distributer::distribute(AVPacket *pkt) {
         pkts[i] = av_packet_clone(pkt);
     }
 
-
     bool pkts_over;
     while(true){
         pkts_over = true;
@@ -48,26 +45,6 @@ int Distributer::distribute(AVPacket *pkt) {
         }
         if(pkts_over) break;
     }
-
-
-
-    //    for(i = 0; i < ofmt_ctxs.size(); i++){
-//        if(std::string(ofmt_ctxs[i]->oformat->name) == "rtp"){
-//            if(pkt->stream_index == 0){
-//                if(time == 0) {
-//                    Thread thread_writePacket(&Writer::write_packets, ofmt_ctxs[i], av_packet_clone(pkt));
-//                    time = 1;
-//                } else time = 0;
-//            } else{
-//                if(time == 0) time = 1;
-//                else{
-//                    time = 0;
-//                    Thread thread_writePacket(&Writer::write_packets, ofmt_ctxs[i], av_packet_clone(pkt));
-//                }
-//            }
-//
-//        } else Thread thread_writePacket(&Writer::write_packets, ofmt_ctxs[i], av_packet_clone(pkt));
-//    }
 
     return 0;
 }
@@ -93,34 +70,12 @@ int Distributer::send(int index){
         if(!pkts[index]) continue;
 
         if(fmt_type[index] != 0){
-           if((pkts[index]->stream_index == 0 && fmt_type[index] == 1) || (pkts[index]->stream_index == 1 && fmt_type[index] == 2)){
+           if((pkts[index]->stream_index == 0 && fmt_type[index] == 1) || (pkts[index]->stream_index == 1 && fmt_type[index] == 2))
                Writer::write_packets(ofmt_ctxs[index], pkts[index]);
-               pkts[index] = nullptr;
-           } else{
-               av_packet_free(&pkts[index]);
-               pkts[index] = nullptr;
-           }
-//            if(fmt_type[index] == 1){
-//                if(pkts[index]->stream_index == 0){
-//                    Writer::write_packets(ofmt_ctxs[index], std::ref(pkts[index]));
-//                } else{
-//                    av_packet_free(&pkts[index]);
-//                    pkts[index] = nullptr;
-//                }
-//            } else{
-//                if(pkts[index]->stream_index == 1){
-//                    Writer::write_packets(ofmt_ctxs[index], std::ref(pkts[index]));
-//                } else{
-//                    av_packet_free(&pkts[index]);
-//                    pkts[index] = nullptr;
-//                }
-//            }
+           else av_packet_free(&pkts[index]);
 
-
-        }  else{
-            Writer::write_packets(ofmt_ctxs[index], pkts[index]);
-            pkts[index] = nullptr;
-        }
+        }  else Writer::write_packets(ofmt_ctxs[index], pkts[index]);
+        pkts[index] = nullptr;
     }
     return 0;
 }

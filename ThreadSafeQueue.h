@@ -28,6 +28,8 @@ public:
 
 
     void pop_front();
+
+
     void pop_back();
 
 
@@ -62,19 +64,6 @@ private:
     std::deque<T> deque_;
     mutable std::mutex mutex_;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif

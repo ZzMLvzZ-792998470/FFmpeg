@@ -20,17 +20,17 @@ int main() {
     std::string file0 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
     //std::string file0 = "C://Users//ZZM//Desktop//素材//test.mp4";
    // std::string file0 = "C://Users//ZZM//Desktop//素材//网上的素材//抖肩舞.mp4";
-    std::string file1 = "C://Users//ZZM//Desktop//素材//hot food.mp4";
-    std::string file2 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
-    std::string file3 = "C://Users//ZZM//Desktop//素材//test.mp4";
+//    std::string file1 = "C://Users//ZZM//Desktop//素材//hot food.mp4";
+//    std::string file2 = "C://Users//ZZM//Desktop//素材//网上的素材//蔡徐坤打篮球.mp4";
+//    std::string file3 = "C://Users//ZZM//Desktop//素材//test.mp4";
    // std::string file0 = "C://Users//ZZM//Desktop//素材//wy.mp4";
     //std::string file0 = "C://Users//ZZM//Desktop//素材//test_60.mp4";
 
 
     input_files.push_back(file0);
-    input_files.push_back(file1);
-    input_files.push_back(file2);
-    input_files.push_back(file3);
+//    input_files.push_back(file1);
+//    input_files.push_back(file2);
+//    input_files.push_back(file3);
 
 
 
@@ -43,14 +43,14 @@ int main() {
 //    std::string output_file0 = "rtp://127.0.0.1:65564";
 //    std::string output_file1 = "rtp://127.0.0.1:65562";
 
-     std::string output_file0 = "rtmp://localhost:1935/live/livestream";
-     std::string output_file1 = "output.mp4";
+//     std::string output_file0 = "rtmp://localhost:1935/live/livestream";
+//     std::string output_file1 = "output.mp4";
 //     std::string output_file1 = "rtsp://localhost:8554/live/livestream";
     std::string output_file2 = "rtp://127.0.0.1:65564";
     std::string output_file3 = "rtp://127.0.0.1:65562";
 
-     output_files.push_back(output_file0);
-     output_files.push_back(output_file1);
+//     output_files.push_back(output_file0);
+//     output_files.push_back(output_file1);
      output_files.push_back(output_file2);
      output_files.push_back(output_file3);
 //    output_files.push_back(output_file4);

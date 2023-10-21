@@ -95,7 +95,6 @@ private:
     FrameConverter::ptr converter;
 
 
-
     double set_framerate;
     double real_framerate;
 

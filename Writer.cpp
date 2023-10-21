@@ -2,6 +2,7 @@
 
 std::mutex Writer::mtx;
 
+
 int Writer::write_header(AVFormatContext* ofmt_ctx) {
     int ret = avformat_write_header(ofmt_ctx, nullptr);
     if(ret < 0){

@@ -1,3 +1,6 @@
-//
-// Created by ZZM on 2023/9/25.
-//
+#include "Timer.h"
+
+
+int64_t Timer::getCurrentTime() {
+    return av_gettime();
+}

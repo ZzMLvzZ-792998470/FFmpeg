@@ -8,6 +8,14 @@ IniterI::IniterI(const std::string &filename) : filename(filename) {
 }
 
 
+
+IniterI::~IniterI(){
+    avformat_close_input(&ifmt_ctx);
+    ifmt_ctx = nullptr;
+}
+
+
+
 int IniterI::init_fmt() {
     int ret;
 
@@ -48,9 +56,6 @@ AVFormatContext* IniterI::change_fmt(std::string &filename){
 
 
 
-IniterI::~IniterI(){
-    avformat_close_input(&ifmt_ctx);
-}
 
 
 IniterD::IniterD() {
@@ -151,7 +156,6 @@ int IniterD::init_device_afmt_ctx() {
 
 }
 
-
 AVFormatContext* IniterD::get_fmt_ctx() {
     //return nullptr;
     return fmt_ctx;
@@ -203,14 +207,12 @@ void IniterD::show_dummy_device_info(const std::string& device_name) {
 
 
 
-
-
-
 IniterO::IniterO(const std::string &filename) : filename(filename) {
 }
 
 IniterO::~IniterO(){
     avformat_free_context(ofmt_ctx);
+    ofmt_ctx = nullptr;
 }
 
 

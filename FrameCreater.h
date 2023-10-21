@@ -19,10 +19,10 @@ public:
     FrameCreater();
     ~FrameCreater();
 
-    //创建视频输出帧（纯黑色）
+    //创建视频输出帧（默认纯黑色）
     static AVFrame *create_video_frame(int height = 1080, int width = 1920, int format = AV_PIX_FMT_YUV420P, int y = 0, int u = 128, int v = 128);
 
-    //创建音频输出帧（静音帧）
+    //创建音频输出帧（默认静音帧）
     static AVFrame *create_audio_frame( int sample_rate = 44100,
                                  int channels = 2,
                                  AVSampleFormat format = AV_SAMPLE_FMT_FLTP,

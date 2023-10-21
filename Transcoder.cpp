@@ -94,7 +94,6 @@ int Transcoder::init_IniterOs(bool& initerO_has_inited, bool& encoder_has_inited
     int encoder_type;
     bool video_type = true;
     for(i = 0; i < outputNums; i++){
-        //if(output_filenames[i].substr(0, 3) != "rtp"){
         if(std::string(IniterOs[i]->get_fmt_ctx()->oformat->name) != "rtp"){
             encoder_type = 0;
         } else{
@@ -124,7 +123,6 @@ int Transcoder::init_IniterOs(bool& initerO_has_inited, bool& encoder_has_inited
 
 
 
-
 int Transcoder::init_Encoder(bool& initerO_has_inited, bool& encoder_has_inited) {
     int ret;
     unsigned int i;
@@ -141,20 +139,19 @@ int Transcoder::init_Encoder(bool& initerO_has_inited, bool& encoder_has_inited)
     if(i >= inputNums) i = 0;
     ret = encoders[0]->init_video_encoder(IniterOs[i]->get_fmt_ctx());
     if(ret < 0){
-        av_log(nullptr, AV_LOG_ERROR, "init video encoder failed.\n");
+        av_log(nullptr, AV_LOG_ERROR, "Encoder::init_video_encoder() failed.\n");
         return ret;
     }
 
     ret = encoders[0]->init_audio_encoder(IniterOs[i]->get_fmt_ctx());
     if(ret < 0){
-        av_log(nullptr, AV_LOG_ERROR, "init audio encoder failed.\n");
+        av_log(nullptr, AV_LOG_ERROR, "Encoder::init_audio_encoder() failed.\n");
         return ret;
     }
 
     encoder_has_inited = true;
     return 0;
 }
-
 
 
 
@@ -168,7 +165,6 @@ int Transcoder::init_transcoder() {
     encoders.resize(1);
 
     converter = FrameConverter::ptr(new FrameConverter(width, height, pix_fmt, channel_layout, samplerate, sample_fmt));
-    //converter->init_converter(channel_layout, samplerate, sample_fmt);
 
 
     bool encoder_has_inited = false, initerO_has_inited = false;
@@ -181,12 +177,12 @@ int Transcoder::init_transcoder() {
 
     ret = init_INiterIs();
     if(ret < 0){
-        av_log(nullptr, AV_LOG_ERROR, "init_INiterIs() failed.\n");
+        av_log(nullptr, AV_LOG_ERROR, "Transcoder::init_INiterIs() failed.\n");
         return ret;
     }
     ret = init_Decoders();
     if(ret < 0){
-        av_log(nullptr, AV_LOG_ERROR, "init_Decoders() failed.\n");
+        av_log(nullptr, AV_LOG_ERROR, "Transcoder::init_Decoders() failed.\n");
         return ret;
     }
 
@@ -206,10 +202,8 @@ int Transcoder::transcode() {
     unsigned int i;
 
 
-    works.resize(inputNums);
-    for(i = 0; i < inputNums; i++){
-        works[i] = 1;
-    }
+    works.resize(inputNums, 1);
+
 
     /*
      * 修改逻辑 在这里直接开启解码线程、音视频编码线程（统一的方法）
@@ -258,8 +252,6 @@ int Transcoder::transcode() {
 
 
 
-
-
 int Transcoder::dealing_audio(std::vector<int> &works) {
     int ret;
     bool audio_finish;
@@ -289,6 +281,7 @@ int Transcoder::dealing_audio(std::vector<int> &works) {
     return 0;
 
 }
+
 
 
 int Transcoder::dealing_video(std::vector<int>& works){
@@ -354,7 +347,6 @@ int Transcoder::dealing_video(std::vector<int>& works){
     video_packet_over = 1;
     return 0;
 }
-
 
 
 

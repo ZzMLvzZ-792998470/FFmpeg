@@ -2,15 +2,11 @@
 #define _DISTRIBUTE_H
 
 extern "C"{
-#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/channel_layout.h>
-#include <libavutil/opt.h>
 };
 
 #include <vector>
 #include <memory>
-#include <condition_variable>
 
 
 #include "Writer.h"
@@ -24,13 +20,16 @@ public:
     Distributer(std::vector<AVFormatContext* >& ofmt_ctx);
     ~Distributer();
 
-
+    //分发接口 传入packet 并复制给私有变量pkts数组
     int distribute(AVPacket* pkt);
 
+    //启动线程
     int start();
 
+    //发送函数 根据不同ofmt_ctxs信息 发送pkt
     int send(int index);
 
+    //停止线程
     int stop();
 
 

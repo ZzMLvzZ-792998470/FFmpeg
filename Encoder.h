@@ -6,7 +6,6 @@ extern "C"{
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/opt.h>
-#include <libavutil/time.h>
 }
 
 
@@ -17,7 +16,7 @@ extern "C"{
 
 #include <string>
 #include <memory>
-#include <condition_variable>
+
 
 
 class Encoder{
@@ -53,20 +52,27 @@ public:
 
 
     //获取视频编码器上下文
-    AVCodecContext *get_video_enc_ctx() const {return video_enc_ctx;}
+    //AVCodecContext *get_video_enc_ctx() const {return video_enc_ctx;}
+    AVCodecContext  *get_video_enc_ctx() const;
 
     //获取音频编码器上下文
-    AVCodecContext *get_audio_enc_ctx() const {return audio_enc_ctx;}
+    //AVCodecContext *get_audio_enc_ctx() const {return audio_enc_ctx;}
+    AVCodecContext *get_audio_enc_ctx() const;
 
 
-    double get_time_video(){return current_time_video;}
-
-    double get_time_audio(){return current_time_audio;}
+    /*
+     * 以下为扩展方法 未使用
+     * */
 
 
     int encode_video_without_sleep(Distributer::ptr distributer);
 
     int encode_audio_without_sleep(Distributer::ptr dsitributer);
+
+
+    double get_time_video(){return current_time_video;}
+
+    double get_time_audio(){return current_time_audio;}
 
     void synchronize(Distributer::ptr distributer);
 
