@@ -30,6 +30,7 @@ int Writer::write_packets(AVFormatContext* ofmt_ctx, AVPacket *enc_pkt) {
     }
 
     av_packet_free(&enc_pkt);
+    enc_pkt = nullptr;
     return 0;
 }
 

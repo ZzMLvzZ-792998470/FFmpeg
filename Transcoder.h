@@ -53,6 +53,9 @@ public:
     //切流操作
     int change_input_stream(std::string& filename, int& stream_index);
 
+    //修改编码器参数
+    int change_enc_ctx();
+
 
 private:
     std::vector<std::string> input_filenames;
@@ -87,8 +90,6 @@ private:
 
     int video_packet_over = 0;
     int audio_packet_over = 0;
-
-    bool is_changing = false;
 
 };
 

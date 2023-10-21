@@ -138,6 +138,7 @@ AVFrame* FrameConverter::convert(AVFrame *frame) {
                                            sample_fmt,
                                            0);
 
+        int nb_samples = frame->nb_samples;
         int output_frame_size = 0 ,convert_nb_samples = 0;
 
 
@@ -159,8 +160,8 @@ AVFrame* FrameConverter::convert(AVFrame *frame) {
         frame = nullptr;
 
 
-        if ((av_audio_fifo_size(fifo) > 0)) {
-            int frame_size = FFMIN(av_audio_fifo_size(fifo), 1024);
+        if(av_audio_fifo_size(fifo) >= nb_samples){
+            int frame_size = FFMIN(av_audio_fifo_size(fifo), nb_samples);
             AVFrame *dst_frame = av_frame_alloc();
             dst_frame->nb_samples = frame_size;
             dst_frame->channel_layout = channel_layout;

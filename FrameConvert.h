@@ -17,6 +17,8 @@ extern "C"{
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
 
+
+#include "FrameCreater.h"
 /*
  * 传入数据帧 判断其类型 并转换为统一的格式 存储在 音视频队列中
  *
@@ -78,21 +80,6 @@ private:
     SwrContext *swr_ctx = nullptr;
     AVAudioFifo *fifo = nullptr;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

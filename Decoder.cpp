@@ -163,7 +163,10 @@ int Decoder::decode_high2low() {
                     video_queue.push_back(converter->convert(av_frame_clone(dec_frame)));
                 }
             } else {
-                if(using_audio) audio_queue.push_back(converter->convert(av_frame_clone(dec_frame)));
+                if(using_audio) {
+                    AVFrame *temp_audio = converter->convert(av_frame_clone(dec_frame));
+                    if (temp_audio) audio_queue.push_back(temp_audio);
+                }
             }
             av_frame_unref(dec_frame);
         }
@@ -234,7 +237,10 @@ int Decoder::decode_low2high() {
                     if(count + frameratio >= 1.0f) prev_frame = av_frame_clone(dec_frame);
                     count += frameratio;
                 } else {
-                    if(using_audio) audio_queue.push_back(converter->convert(av_frame_clone(dec_frame)));
+                    if(using_audio){
+                        AVFrame *temp_audio = converter->convert(av_frame_clone(dec_frame));
+                        if(temp_audio) audio_queue.push_back(temp_audio);
+                    }
                 }
                 av_frame_unref(dec_frame);
             }
